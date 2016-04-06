@@ -1,11 +1,11 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
 import java.rmi.AlreadyBoundException;
-import java.rmi.Naming;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -444,12 +444,13 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 		 if (System.getSecurityManager() == null)
 	            System.setSecurityManager ( new RMISecurityManager() );
 	        
-	        System.out.println("Run properly");
+	      
 	        
 	     try {
 			final NameNode namenode = new NameNode();
-			Naming.bind("NameNode", namenode);
-			
+			Registry registry = LocateRegistry.getRegistry();
+			registry.bind("NameNode", namenode);
+			System.out.println("Run properly");
 			new Thread(new Runnable() {
 				
 				@Override
@@ -469,8 +470,6 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 			
 			
 		} catch (RemoteException e) {
-			e.printStackTrace();
-		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		} catch (AlreadyBoundException e) {
 			e.printStackTrace();

@@ -8,7 +8,8 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
-import java.util.Arrays;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -192,8 +193,9 @@ public class Client {
 			System.setSecurityManager(new RMISecurityManager());
 		}
 		try {
-			namenode = (INameNode) Naming.lookup("rmi://" + namenodeIp + "/NameNode");
-		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+			Registry registry = LocateRegistry.getRegistry(namenodeIp);
+			namenode = (INameNode) registry.lookup("NameNode");
+		} catch ( RemoteException | NotBoundException e) {
 			System.out.println("ERROR: Error in PUT request...Returning......");
 			e.printStackTrace();
 		}
@@ -212,10 +214,11 @@ public class Client {
 		}
 		try {
 			// TODO: Check for port usage
-			IDataNode datanode = (IDataNode) Naming.lookup("rmi://" + datanodeAddress.getIp()
+			Registry registry = LocateRegistry.getRegistry(datanodeAddress.getIp());
+			IDataNode datanode = (IDataNode) registry.lookup("rmi://" + datanodeAddress.getIp()
 					+ "/DataNode");
 			return datanode;
-		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+		} catch (RemoteException | NotBoundException e) {
 			System.out.println("ERROR: Error in connect datanode request...Returning......");
 			e.printStackTrace();
 			return null;

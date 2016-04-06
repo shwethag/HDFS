@@ -5,16 +5,15 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
 import java.rmi.AlreadyBoundException;
-import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 import IDataNode.IDataNode;
@@ -155,8 +154,9 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			System.setSecurityManager(new RMISecurityManager());
 		}
 		try {
-			namenode = (INameNode) Naming.lookup("rmi://" + namenodeIp + "/NameNode");
-		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+			Registry registry = LocateRegistry.getRegistry(namenodeIp);
+			namenode = (INameNode) registry.lookup("NameNode");
+		} catch ( RemoteException | NotBoundException e) {
 			System.out.println("ERROR: Error in PUT request...Returning......");
 			e.printStackTrace();
 		}
@@ -236,10 +236,10 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 		}
 		try {
 			// TODO: Check for port usage
-			IDataNode datanode = (IDataNode) Naming.lookup("rmi://"
-					+ datanodeAddress.getIp() + "/DataNode");
+			Registry registry = LocateRegistry.getRegistry(datanodeAddress.getIp());
+			IDataNode datanode = (IDataNode) registry.lookup("DataNode");
 			return datanode;
-		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+		} catch ( RemoteException | NotBoundException e) {
 			System.out
 					.println("ERROR: Error in connect datanode request...Returning......");
 			e.printStackTrace();
@@ -305,7 +305,8 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 
 		try {
 			final DataNode datanode = new DataNode(Integer.parseInt(args[0]));
-			Naming.bind("DataNode", datanode);
+			Registry registry = LocateRegistry.getRegistry();
+			registry.bind("DataNode", datanode);
 			System.out.println("Service Bound...");
 			 
 		    new Thread(new Runnable() {
@@ -329,9 +330,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			
 		} catch (RemoteException e) {
 			e.printStackTrace();
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		} catch (AlreadyBoundException e) {
+		}catch (AlreadyBoundException e) {
 			e.printStackTrace();
 		}
 
