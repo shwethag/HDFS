@@ -11,6 +11,7 @@ import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 public class DataNode extends UnicastRemoteObject implements IDataNode {
 
+	private static final int PORT = 1099;
 	private static final String COMMA = ",";
 	private static final String DEL = "/";
 	private static final String DAT = ".dat";
@@ -305,8 +307,15 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 
 		try {
 			final DataNode datanode = new DataNode(Integer.parseInt(args[0]));
-			Registry registry = LocateRegistry.getRegistry();
-			registry.bind("DataNode", datanode);
+			Registry registry = null;
+			try{
+				registry = LocateRegistry.createRegistry(PORT);
+			}
+			catch(ExportException e){
+				System.out.println("Registry already created.. getting the registry");
+				registry = LocateRegistry.getRegistry(PORT);
+			}
+			 registry.bind("DataNode", datanode);
 			System.out.println("Service Bound...");
 			 
 		    new Thread(new Runnable() {

@@ -448,7 +448,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 	        
 	     try {
 			final NameNode namenode = new NameNode();
-			Registry registry = LocateRegistry.getRegistry();
+			Registry registry = LocateRegistry.createRegistry(1099);
 			registry.bind("NameNode", namenode);
 			System.out.println("Run properly");
 			new Thread(new Runnable() {
