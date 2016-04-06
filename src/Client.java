@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -257,31 +258,16 @@ public class Client {
 			System.out.println("ERROR: open request failed..");
 			return;
 		}
-		BufferedReader sc = null;
+		FileInputStream fin = null;
 		try {
-			sc = new BufferedReader(new FileReader(new File(fileName)));
+			
+			fin = new FileInputStream(new File(fileName));
 			// loop
-			int cnt = 0;
-			StringBuilder builder = new StringBuilder();
+			byte [] block = new byte[blockSize];
 			// assign
 			int c;
-			while ((c = sc.read()) != -1) {
-				if (cnt < blockSize) {
-					builder.append((char) c);
-					cnt++;
-				} else {
-					builder.append((char) c);
-					if (!assignBlocks(fileName, builder)) {
-						System.out.println("ERROR: Failed in assigning blocks");
-						return;
-					}
-
-					builder = new StringBuilder();
-					cnt = 0;
-				}
-			}
-			if (cnt != 0) {
-				if (!assignBlocks(fileName, builder)) {
+			while ((c = fin.read(block)) != -1) {	
+				if (!assignBlocks(fileName, block)) {
 					System.out.println("ERROR: Failed in assigning blocks");
 					return;
 				}
@@ -301,9 +287,9 @@ public class Client {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			if (sc != null)
+			if (fin != null)
 				try {
-					sc.close();
+					fin.close();
 				} catch (IOException e) {
 					System.out.println("ERROR: Error closing file");
 					e.printStackTrace();
@@ -312,7 +298,7 @@ public class Client {
 
 	}
 
-	private boolean assignBlocks(String fileName, StringBuilder builder) throws RemoteException,
+	private boolean assignBlocks(String fileName, byte [] builder) throws RemoteException,
 			InvalidProtocolBufferException {
 		System.out.println("INFO: Getting blocks to write..");
 		byte[] assignBlockByte = buildAssignBlock(fileName);

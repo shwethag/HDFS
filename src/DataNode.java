@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -41,6 +42,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 	private List<Integer> blockIdList;
 	private INameNode namenode;
 	private String namenodeIp;
+	private int blockSize;
 	
 	public DataNode(int id) throws RemoteException {
 		super();
@@ -53,7 +55,10 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			sc = new Scanner(new File(CONFIG));
 			while (sc.hasNext()) {
 				data = sc.nextLine().split("=");
-				if (NAMENODE.equals(data[0])) {
+				if (BLOCK.equals(data[0])) {
+					blockSize = Integer.parseInt(data[1]);
+					System.out.println("INFO: block size " + blockSize);
+				} else if (NAMENODE.equals(data[0])) {
 					namenodeIp = data[1];
 				}
 			}
@@ -117,23 +122,22 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 				System.out.println("ERROR: Block not present here.." + blkNum);
 				readBlkResponse.setStatus(FAILURE);
 			}else{
-				BufferedReader reader = null;
+				FileInputStream fin = null;
+				File file = new File(DATA_FOLDER+DEL+blkNum+DAT);
+				byte[] block = new byte[(int)file.length()];
 				try{
-					reader = new BufferedReader(new FileReader(new File(DATA_FOLDER+DEL+blkNum+DAT)));
-					StringBuilder builder = new StringBuilder();
-					int c;
-					while((c= reader.read())!=-1){
-						builder.append((char)c);
-					}
+					fin = new FileInputStream(file);
+					fin.read(block);
+					
 					readBlkResponse.setStatus(SUCCESS);
-					readBlkResponse.addData(ByteString.copyFrom(builder.toString().getBytes()));
+					readBlkResponse.addData(ByteString.copyFrom(block));
 				}catch(IOException e){
 					System.out.println("ERROR: unable to read block");
 					readBlkResponse.setStatus(FAILURE);
 				} finally{
-					if(reader!=null)
+					if(fin!=null)
 						try {
-							reader.close();
+							fin.close();
 						} catch (IOException e) {
 							System.out.println("WARN: Error closing file");
 							e.printStackTrace();
