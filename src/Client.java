@@ -105,7 +105,7 @@ public class Client {
 		try {
 			byte[] blockLocResponseArray = namenode.getBlockLocations(blockLocReqBuilder.build()
 					.toByteArray());
-			Map<Integer, String> blockDataMap = fetchBlocks(blockLocResponseArray);
+			Map<Integer, ByteString> blockDataMap = fetchBlocks(blockLocResponseArray);
 
 			File block = new File(DATA_DIR + DEL + fileName);
 			writer = new FileOutputStream(block);
@@ -115,7 +115,17 @@ public class Client {
 					System.out.println("ERROR: Blocks not read properly..Missing block " + blk);
 					return;
 				}
-				writer.write(blockDataMap.get(blk).getBytes());
+				ByteString blockByte = blockDataMap.get(blk);
+				//System.out.println("Final dump: "+ blockByte.toStringUtf8());
+				//System.out.println("Final dump: "+ blockByte.toByteArray());
+				if(blockByte.isValidUtf8()){
+					System.out.println("Coming inside valid UTF8 if");
+					String s = blockByte.toStringUtf8();
+					writer.write(s.getBytes());
+				}
+				else
+					blockByte.writeTo(writer);
+				
 				System.out.print(blockDataMap.get(blk));
 			}
 			Hdfs.CloseFileRequest.Builder closeBuilder = Hdfs.CloseFileRequest.newBuilder();
@@ -143,12 +153,12 @@ public class Client {
 
 	}
 
-	private Map<Integer, String> fetchBlocks(byte[] blockLocResponseArray)
+	private Map<Integer, ByteString> fetchBlocks(byte[] blockLocResponseArray)
 			throws InvalidProtocolBufferException {
 		Hdfs.BlockLocationResponse blockLocResp = Hdfs.BlockLocationResponse
 				.parseFrom(blockLocResponseArray);
 		List<Hdfs.BlockLocations> blockLocations = blockLocResp.getBlockLocationsList();
-		Map<Integer, String> blockDataMap = new HashMap<Integer, String>(); // blkid, data
+		Map<Integer, ByteString> blockDataMap = new HashMap<Integer, ByteString>(); // blkid, data
 		for (Hdfs.BlockLocations location : blockLocations) {
 			int blockNum = location.getBlockNumber();
 			for (Hdfs.DataNodeLocation datalocation : location.getLocationsList()) {
@@ -168,15 +178,15 @@ public class Client {
 						System.out.println("WARN: Failed to read from datanode");
 						continue;
 					}
-					StringBuilder data = new StringBuilder();
+					ByteString s= null;
 					for (ByteString content : readBlockResp.getDataList()) {
-						System.out.println(content);
-						String s = content.toStringUtf8();
-						
-						data.append(s);
+						s = content;
+						break;
+						//TODO: Check the proper get methods
 					}
+					System.out.println("In Client : " + s.toStringUtf8());
 					System.out.println("INFO: Read block successfully.. " + blockNum);
-					blockDataMap.put(blockNum, data.toString());
+					blockDataMap.put(blockNum, s);
 					break;
 
 				} catch (RemoteException e) {
@@ -298,7 +308,7 @@ public class Client {
 
 	}
 
-	private boolean assignBlocks(String fileName, byte [] builder) throws RemoteException,
+	private boolean assignBlocks(String fileName, byte [] bytes) throws RemoteException,
 			InvalidProtocolBufferException {
 		System.out.println("INFO: Getting blocks to write..");
 		byte[] assignBlockByte = buildAssignBlock(fileName);
@@ -329,7 +339,8 @@ public class Client {
 		for (int i = 1; i < blockLocations.getLocationsCount(); i++) {
 			newBlockLocationsBuilder.addLocations(blockLocations.getLocations(i));
 		}
-		ByteString byteString = ByteString.copyFrom(builder.toString().getBytes());
+		ByteString byteString = ByteString.copyFrom(bytes);
+		System.out.println(byteString.toStringUtf8());
 		byte[] writeRequestArray = constructWrite(byteString, newBlockLocationsBuilder.build());
 		System.out.println("sending writeblock request");
 		byte[] writeReponseArray = datanode.writeBlock(writeRequestArray);

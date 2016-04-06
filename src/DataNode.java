@@ -124,13 +124,12 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			}else{
 				FileInputStream fin = null;
 				File file = new File(DATA_FOLDER+DEL+blkNum+DAT);
-				byte[] block = new byte[(int)file.length()];
 				try{
 					fin = new FileInputStream(file);
-					fin.read(block);
-					
+					ByteString  blockString =ByteString.readFrom(fin);
 					readBlkResponse.setStatus(SUCCESS);
-					readBlkResponse.addData(ByteString.copyFrom(block));
+					System.out.println("While Get In DN: "+blockString.toStringUtf8());
+					readBlkResponse.addData(blockString);
 				}catch(IOException e){
 					System.out.println("ERROR: unable to read block");
 					readBlkResponse.setStatus(FAILURE);
@@ -200,12 +199,13 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 		Hdfs.WriteBlockResponse.Builder writeResBuilder  = Hdfs.WriteBlockResponse.newBuilder();
 		try {
 			Hdfs.WriteBlockRequest writeRequest = Hdfs.WriteBlockRequest.parseFrom(inp);
-			byte[] data = writeRequest.getData(0).toByteArray();
+			ByteString data = writeRequest.getData(0);
 			Hdfs.BlockLocations blocklocations = writeRequest.getBlockInfo();
 			int blockNum = blocklocations.getBlockNumber();
 			File block = new File(DATA_FOLDER+DEL+blockNum+DAT);
 			writer = new FileOutputStream(block);
-			writer.write(data);
+			System.out.println("Data in DN:"+data.toStringUtf8());
+			data.writeTo(writer);
 			
 			if(!forwardWrite(blocklocations,writeRequest.getData(0))){
 				System.out.println("ERROR: Failed to send forward request");
