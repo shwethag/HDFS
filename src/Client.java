@@ -215,8 +215,7 @@ public class Client {
 		try {
 			// TODO: Check for port usage
 			Registry registry = LocateRegistry.getRegistry(datanodeAddress.getIp());
-			IDataNode datanode = (IDataNode) registry.lookup("rmi://" + datanodeAddress.getIp()
-					+ "/DataNode");
+			IDataNode datanode = (IDataNode) registry.lookup("DataNode");
 			return datanode;
 		} catch (RemoteException | NotBoundException e) {
 			System.out.println("ERROR: Error in connect datanode request...Returning......");
