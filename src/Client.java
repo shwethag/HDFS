@@ -127,7 +127,7 @@ public class Client {
 				else
 					blockByte.writeTo(writer);
 				
-				System.out.print(blockDataMap.get(blk));
+				//System.out.print(blockDataMap.get(blk));
 			}
 			Hdfs.CloseFileRequest.Builder closeBuilder = Hdfs.CloseFileRequest.newBuilder();
 			closeBuilder.setHandle(handle);
@@ -185,7 +185,7 @@ public class Client {
 						break;
 						//TODO: Check the proper get methods
 					}
-					System.out.println("In Client : " + s.toStringUtf8());
+					//System.out.println("In Client : " + s.toStringUtf8());
 					System.out.println("INFO: Read block successfully.. " + blockNum);
 					blockDataMap.put(blockNum, s);
 					break;
@@ -347,7 +347,7 @@ public class Client {
 			newBlockLocationsBuilder.addLocations(blockLocations.getLocations(i));
 		}
 		ByteString byteString = ByteString.copyFrom(bytes);
-		System.out.println(byteString.toStringUtf8());
+		//System.out.println(byteString.toStringUtf8());
 		byte[] writeRequestArray = constructWrite(byteString, newBlockLocationsBuilder.build());
 		System.out.println("sending writeblock request");
 		byte[] writeReponseArray = datanode.writeBlock(writeRequestArray);
