@@ -11,6 +11,7 @@ import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -274,11 +275,16 @@ public class Client {
 			fin = new FileInputStream(new File(fileName));
 			// loop
 			byte [] block = new byte[blockSize];
+			byte [] copyBlock;
 			// assign
 			int c;
-			ByteString blockString;
-			while ((blockString = ByteString.readFrom(fin,blockSize))!=null) {	
-				if (!assignBlocks(fileName, blockString)) {
+			while ((c = fin.read(block)) != -1) {	
+				copyBlock = block;
+				if(c < blockSize){
+					copyBlock = Arrays.copyOf(block, c);
+				}
+				
+				if (!assignBlocks(fileName, copyBlock)) {
 					System.out.println("ERROR: Failed in assigning blocks");
 					return;
 				}
@@ -309,7 +315,7 @@ public class Client {
 
 	}
 
-	private boolean assignBlocks(String fileName, ByteString byteString) throws RemoteException,
+	private boolean assignBlocks(String fileName, byte [] bytes) throws RemoteException,
 			InvalidProtocolBufferException {
 		System.out.println("INFO: Getting blocks to write..");
 		byte[] assignBlockByte = buildAssignBlock(fileName);
@@ -340,7 +346,7 @@ public class Client {
 		for (int i = 1; i < blockLocations.getLocationsCount(); i++) {
 			newBlockLocationsBuilder.addLocations(blockLocations.getLocations(i));
 		}
-		//ByteString byteString = ByteString.copyFrom(bytes);
+		ByteString byteString = ByteString.copyFrom(bytes);
 		System.out.println(byteString.toStringUtf8());
 		byte[] writeRequestArray = constructWrite(byteString, newBlockLocationsBuilder.build());
 		System.out.println("sending writeblock request");
