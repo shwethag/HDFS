@@ -30,7 +30,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 	private static final String COMMA = ",";
 	private static final String DEL = "/";
 	private static final String DAT = ".dat";
-	private static final String CONFIG = "config.ini";
+	private static final String CONFIG = "./config/config.ini";
 	private static final String BLOCK = "blocksize";
 	private static final long serialVersionUID = 1L;
 	private static final int FAILURE = 0;

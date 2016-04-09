@@ -26,7 +26,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 	private static final String BLOCK_ID_LIST_MAP_FILE = "blockIdListMap.dat";
 	private static final String BLOCKMAPFILE = "blockMap.dat";
 	private static final String EQUALS = "=";
-	private static final String DATANODE_INI = "datanode.ini";
+	private static final String DATANODE_INI = "./config/datanode.ini";
 	private static final String FILEHANDLE_MAP = "filehandleMap.dat";
 	private static final int FAILURE = 0;
 	private static final int SUCCESS = 1;

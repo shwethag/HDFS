@@ -24,7 +24,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 public class Client {
-	private static final String CONFIG = "config.ini";
+	private static final String CONFIG = "./config/config.ini";
 	private static final String BLOCK = "blocksize";
 	private static final String NAMENODE = "namenode";
 	private static final String DATA_DIR = "./remoteData";
