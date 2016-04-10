@@ -1,11 +1,7 @@
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -17,11 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
-import IDataNode.IDataNode;
-import INameNode.INameNode;
-
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import IDataNode.IDataNode;
+import INameNode.INameNode;
+import hdfs.Hdfs;
 
 public class Client {
 	private static final String CONFIG = "./config/config.ini";

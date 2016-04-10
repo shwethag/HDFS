@@ -1,9 +1,7 @@
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.rmi.AlreadyBoundException;
@@ -18,11 +16,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-import IDataNode.IDataNode;
-import INameNode.INameNode;
-
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import IDataNode.IDataNode;
+import INameNode.INameNode;
+import hdfs.Hdfs;
 
 public class DataNode extends UnicastRemoteObject implements IDataNode {
 

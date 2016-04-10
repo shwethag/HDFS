@@ -16,7 +16,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import mapreduce.MapReduce;
 import mapreduce.MapReduce.HeartBeatResponse;
+import mapreduce.MapReduce.MapTaskInfo;
 import mapreduce.MapReduce.MapTaskStatus;
+import mapreduce.MapReduce.ReducerTaskInfo;
 import mapreduce.jobtracker.IJobTracker;
 
 public class TaskTracker {
@@ -71,34 +73,25 @@ public class TaskTracker {
 		}
 	}
 	
-	public void removeCompletedTask(List<String> completedList){
-		for (String key : completedList) {
-			mapperThreadPool.activeThreadTask.remove(key);
-			mapperThreadPool.availableCount++;
-			mapperThreadPool.occupiedCount--;
-		}
-		System.out.println("INFO: completed Tasks removed from the queue");
-	}
-	
 	public MapReduce.HeartBeatResponse sendHeartBeat(){
 		System.out.println("INFO: Sending HeartBeat");
 		MapReduce.HeartBeatRequest.Builder heartBeatBuilder = MapReduce.HeartBeatRequest.newBuilder();
 		MapReduce.HeartBeatResponse heartBeatResponse = null;
 		heartBeatBuilder.setTaskTrackerId(tid);
-		heartBeatBuilder.setNumMapSlotsFree(mapperThreadPool.availableCount);
+		heartBeatBuilder.setNumMapSlotsFree(MapperThreadPool.availableCount);
 		System.out.println("INFO: Attaching tib and freeslots to heartbeat successfull");
 		//TODO: Need to add info of reducer Thread pool
-		List<String> completedList = new ArrayList<>();
-		for ( Map.Entry<String,MapTaskStatus> mapTaskStatus : mapperThreadPool.activeThreadTask.entrySet()) {
-			heartBeatBuilder.addMapStatus(mapTaskStatus.getValue());
-			if(mapTaskStatus.getValue().getTaskCompleted()){
-				completedList.add(mapTaskStatus.getKey());
-				System.out.println("INFO: Task "+mapTaskStatus.getKey()+" got completed");
-			}
-			
+		for ( MapTaskStatus mapTaskStatus : MapperThreadPool.activeThreadTask) {
+			heartBeatBuilder.addMapStatus(mapTaskStatus);
 		}
 		
-		removeCompletedTask(completedList);
+		for (MapTaskStatus mapTaskStatus : MapperThreadPool.completedThreadTask) {
+			heartBeatBuilder.addMapStatus(mapTaskStatus);
+		}
+		
+		MapperThreadPool.flushCompletedList();
+		
+		
 		System.out.println("INFO: Appending Task status to heartbeat was successfull");
 		byte[] heartBeatResponseByte = jobTracker.heartBeat(heartBeatBuilder.build().toByteArray());
 		try {
@@ -114,6 +107,15 @@ public class TaskTracker {
 	public void assignTaskToThread(HeartBeatResponse heartBeatResponse){
 		System.out.println("INFO: Assigning JT requested tasks to thread");
 		System.out.println("INFO: Checking MapTasks");
+		for (MapTaskInfo mapTaskInfo : heartBeatResponse.getMapTasksList()) {
+			mapperThreadPool.addNewMapTask(mapTaskInfo);
+		}
+		
+		/*for (ReducerTaskInfo reduceTaskInfo : heartBeatResponse.getReduceTasksList()) {
+			mapperThreadPool.addNewReduceTask(reduceTaskInfo);
+		}
+		*/
+		
 		
 		System.out.println("INFO: Checking ReduceTasks");
 	}
@@ -125,6 +127,16 @@ public class TaskTracker {
 		}
 		int id=Integer.parseInt(args[0]);
 		TaskTracker taskTracker = new TaskTracker(id);
+		
+		while(true){
+			try {
+				Thread.sleep(2000);
+				HeartBeatResponse heartBeatResponse=taskTracker.sendHeartBeat();
+				taskTracker.assignTaskToThread(heartBeatResponse);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	

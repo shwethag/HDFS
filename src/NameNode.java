@@ -16,9 +16,10 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 
-import INameNode.INameNode;
-
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import INameNode.INameNode;
+import hdfs.Hdfs;
 
 public class NameNode extends UnicastRemoteObject implements INameNode{
 
