@@ -1,3 +1,5 @@
+package hdfs;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -24,11 +26,10 @@ import hdfs.Hdfs;
 public class NameNode extends UnicastRemoteObject implements INameNode{
 
 	private static final String COMMA = ",";
-	private static final String BLOCK_ID_LIST_MAP_FILE = "blockIdListMap.dat";
-	private static final String BLOCKMAPFILE = "blockMap.dat";
+	private static final String BLOCKMAPFILE = "./data_dump/handle_block_map.dat";
 	private static final String EQUALS = "=";
 	private static final String DATANODE_INI = "./config/datanode.ini";
-	private static final String FILEHANDLE_MAP = "filehandleMap.dat";
+	private static final String FILEHANDLE_MAP = "./data_dump/filehandleMap.dat";
 	private static final int FAILURE = 0;
 	private static final int SUCCESS = 1;
 	private static final long serialVersionUID = 1L;
@@ -99,29 +100,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 				sc.close();
 		}
 		
-		System.out.println("INFO: To Load Block List Map");
-		
-		try {
-			sc = new Scanner(new File(BLOCK_ID_LIST_MAP_FILE));
-			while(sc.hasNext()){
-				String line=sc.nextLine();
-				if(line.length()==0)
-					break;
-				String val[] = line.split(EQUALS);
-				int key=Integer.parseInt(val[0]);
-				String values[] = val[1].split(COMMA);
-				Set<Integer> blockNums = new HashSet<>();
-				for(int i=0;i<values.length;i++){
-					blockNums.add(Integer.parseInt(values[i]));
-				}
-				blockIdListMap.put(key, blockNums);
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}finally{
-			if(sc!=null)
-				sc.close();
-		}
+	
 		
 		System.out.println("INFO: To Load Filehandle Map");
 		
@@ -169,26 +148,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 				pr.close();
 		}
 		
-		System.out.println("INFO: Dumping blockIdListMap to file");
-		try {
-			pr = new PrintWriter(new File(BLOCK_ID_LIST_MAP_FILE));
-			for (Map.Entry<Integer, Set<Integer> > entry : blockIdListMap.entrySet()) {
-				pr.print(entry.getKey().toString());
-				pr.print(EQUALS);
-				for (Integer blockNum : entry.getValue()) {
-					pr.print(blockNum.toString());
-					pr.print(COMMA);
-				}
-				pr.println();
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}finally{
-			if(pr!=null)
-				pr.close();
-		}
-		
-		
+				
 		System.out.println("INFO: Dumping FILEHANDLEMAP to file");
 		try {
 			pr = new PrintWriter(new File(FILEHANDLE_MAP));

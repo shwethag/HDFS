@@ -1,3 +1,5 @@
+package hdfs;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -36,7 +38,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 	private static final int SUCCESS = 1;
 	private static final String NAMENODE = "namenode";
 	private static final String DATA_FOLDER = "./data";
-	private static final String BLOCK_LIST_FILE = "blockList.dat";
+	private static final String BLOCK_LIST_FILE = "./data_dump/fileblockIds.dat";
 	private int dataNode_ID;
 	private List<Integer> blockIdList;
 	private INameNode namenode;
