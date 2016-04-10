@@ -38,7 +38,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	public JobTracker() throws RemoteException {
 		super();
-
+		System.out.println("INFO : Started Job tracker");
 		jobQueue = new LinkedList<>();
 	}
 
@@ -73,22 +73,16 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 	}
 
-	public String getRandomDataNodeIp() {
-		System.out.println("INFO: Getting random IP");
-		int ttCnt = tt_id_ip.size();
-		Random rand = new Random();
-		int randId = rand.nextInt(ttCnt) + 1;
-		return tt_id_ip.get(randId);
-	}
-
+	
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) {
-
+		System.out.println("INFO: Submit job request received");
+		MapReduce.JobSubmitResponse.Builder jobResponseBuilder = MapReduce.JobSubmitResponse
+				.newBuilder();
 		try {
 			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest
 					.parseFrom(jobSubmitRequest);
-			MapReduce.JobStatusResponse.Builder jobResponseBuilder = MapReduce.JobStatusResponse
-					.newBuilder();
+			
 			String mapname = jobSubmit.getMapName();
 			String reducename = jobSubmit.getReducerName();
 			MapReducePair mrPair = new MapReducePair(mapname, reducename);
@@ -103,13 +97,16 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				Job job = new Job(jobIdCnt, jobSubmit.getInputFile(), jobSubmit.getOutputFile(),
 						jobSubmit.getNumReduceTasks(), mapname, reducename);
 				jobQueue.add(job);
+				jobResponseBuilder.setJobId(jobIdCnt);
+				jobResponseBuilder.setStatus(SUCCESS);
 			}
 
 		} catch (InvalidProtocolBufferException e) {
+			System.out.println("ERROR: Not a valid protobuf");
 			e.printStackTrace();
 		}
-
-		return null;
+		System.out.println("INFO: Sending job response");
+		return jobResponseBuilder.build().toByteArray();
 	}
 
 	@Override
