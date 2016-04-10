@@ -10,8 +10,10 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -30,28 +32,34 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private static final Object jobLock = new Object();
 	private static int jobIdCnt = 0;
 	private static List<MapReducePair> mappersReducersList;
-	private static final Map<Integer,String> tt_id_ip;
-	
+	private static final Map<Integer, String> tt_id_ip;
+
+	private Queue<Job> jobQueue;
+
 	public JobTracker() throws RemoteException {
 		super();
+
+		jobQueue = new LinkedList<>();
 	}
 
 	static {
 		mappersReducersList = new ArrayList<MapReducePair>();
 		tt_id_ip = new HashMap<Integer, String>();
-		
+
 		Scanner sc = null;
 		String line;
 		try {
 			sc = new Scanner(new File(MAPPERS_REDUCERS));
+			System.out.println("INFO: Loading mappers and reducers..");
 			while (sc.hasNext()) {
 				line = sc.nextLine();
 				String map_red[] = line.split("-");
 				mappersReducersList.add(new MapReducePair(map_red[0], map_red[1]));
 			}
 			sc.close();
+			System.out.println("INFO: Loading Task tracker's id and ip..");
 			sc = new Scanner(new File(TASK_TRACKER_IPS));
-			while(sc.hasNext()){
+			while (sc.hasNext()) {
 				line = sc.nextLine();
 				String id_ip[] = line.split(EQUALS);
 				tt_id_ip.put(Integer.parseInt(id_ip[0]), id_ip[1]);
@@ -59,31 +67,23 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			sc.close();
 		} catch (IOException e) {
 			System.out.println("Error loading init files");
-		} finally{
-			if(sc!=null)
+		} finally {
+			if (sc != null)
 				sc.close();
 		}
 	}
-	
-	public String getRandomDataNodeIp(){
-		int ttCnt  = tt_id_ip.size();
+
+	public String getRandomDataNodeIp() {
+		System.out.println("INFO: Getting random IP");
+		int ttCnt = tt_id_ip.size();
 		Random rand = new Random();
-		int randId = rand.nextInt(ttCnt)+1;
+		int randId = rand.nextInt(ttCnt) + 1;
 		return tt_id_ip.get(randId);
 	}
 
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) {
 
-		/*
-		 * message JobSubmitRequest { optional string mapName = 1; // Java
-		 * class, or name of C .so optional string reducerName = 2; // Java
-		 * class, or name of C .so optional string inputFile = 3; optional
-		 * string outputFile = 4; optional int32 numReduceTasks = 5; }
-		 * 
-		 * message JobSubmitResponse { optional int32 status = 1; optional int32
-		 * jobId = 2; }
-		 */
 		try {
 			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest
 					.parseFrom(jobSubmitRequest);
@@ -97,13 +97,14 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				jobResponseBuilder.setStatus(FAILURE);
 				return jobResponseBuilder.build().toByteArray();
 			}
-			
+
 			synchronized (jobLock) {
 				jobIdCnt++;
-				Job job = new Job(jobIdCnt, mapname, reducename, jobSubmit.getNumReduceTasks());
-				//if(!)
+				Job job = new Job(jobIdCnt, jobSubmit.getInputFile(), jobSubmit.getOutputFile(),
+						jobSubmit.getNumReduceTasks(), mapname, reducename);
+				jobQueue.add(job);
 			}
-			
+
 		} catch (InvalidProtocolBufferException e) {
 			e.printStackTrace();
 		}
@@ -159,7 +160,6 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 }
 
 class MapReducePair {
-	
 
 	public String mapper;
 	public String reducer;
@@ -168,7 +168,7 @@ class MapReducePair {
 		mapper = map;
 		reducer = reduce;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

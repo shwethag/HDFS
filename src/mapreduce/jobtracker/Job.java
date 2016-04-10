@@ -5,14 +5,19 @@ public class Job {
 	private int jobId;
 	private String inputFileName;
 	private String outputFileName;
+	private String mapName;
+	private String reduceName;
 	private int reducersCnt;
-	
-	public Job(int jobId, String inputFileName, String outputFileName, int reducersCnt) {
+
+	public Job(int jobId, String inputFileName, String outputFileName, int reducersCnt,
+			String mapName, String reduceName) {
 		super();
 		this.jobId = jobId;
 		this.inputFileName = inputFileName;
 		this.outputFileName = outputFileName;
 		this.reducersCnt = reducersCnt;
+		this.mapName = mapName;
+		this.reduceName = reduceName;
 	}
 
 	public int getJobId() {
@@ -29,6 +34,22 @@ public class Job {
 
 	public int getReducersCnt() {
 		return reducersCnt;
+	}
+
+	public String getMapName() {
+		return mapName;
+	}
+
+	public void setMapName(String mapName) {
+		this.mapName = mapName;
+	}
+
+	public String getReduceName() {
+		return reduceName;
+	}
+
+	public void setReduceName(String reduceName) {
+		this.reduceName = reduceName;
 	}
 
 	@Override
@@ -52,7 +73,5 @@ public class Job {
 			return false;
 		return true;
 	}
-	
-	
-	
+
 }
