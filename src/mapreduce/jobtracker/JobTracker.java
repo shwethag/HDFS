@@ -54,6 +54,8 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		super();
 		System.out.println("INFO : Started Job tracker");
 		waitingJobQueue = new LinkedList<>();
+		jobTasklistMap = new HashMap<>();
+		waitingMapTasks = new LinkedList<>();
 		// connectNameNode();
 	}
 
