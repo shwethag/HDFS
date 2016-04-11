@@ -26,20 +26,28 @@ import hdfs.Hdfs.BlockLocationRequest;
 import hdfs.Hdfs.BlockLocationResponse;
 import hdfs.Hdfs.BlockLocations;
 import hdfs.Hdfs.DataNodeLocation;
+import hdfs.Hdfs.HeartBeatRequest;
 import mapreduce.MapReduce;
+import mapreduce.MapReduce.HeartBeatResponse;
+import mapreduce.MapReduce.JobStatusResponse;
 import mapreduce.MapReduce.MapTaskInfo;
 
 public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private static final String EQUALS = "=";
+
 	private static final String TASK_TRACKER_IPS = "./config/tasktracker.ini";
 	private static final String CONFIG_FILE = "./config/config.ini";
 	private static final String MAPPERS_REDUCERS = "./config/mappers_reducers.ini";
+
 	private static final long serialVersionUID = 1L;
 	private static final int SUCCESS = 1;
 	private static final int FAILURE = 0;
+
 	private static final Object jobLock = new Object();
+
 	private static int jobIdCnt = 0;
+
 	private static List<MapReducePair> mappersReducersList;
 	private static final Map<Integer, String> tt_id_ip;
 	private static final String NAMENODE = "namenode";
@@ -47,8 +55,11 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private static String namenodeIp;
 	private INameNode namenode;
 	private Queue<Job> waitingJobQueue;
+	private Map<Integer,Job> jobInfoMap;
 	private Map<Integer, List<Integer>> jobTasklistMap;
 	private Queue<MapTaskInfo> waitingMapTasks;
+	private Map<Integer, JobStatusResponse.Builder> activeJobMap;
+	private Map<Integer, JobStatusResponse> completedJobMap;
 
 	public JobTracker() throws RemoteException {
 		super();
@@ -56,6 +67,9 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		waitingJobQueue = new LinkedList<>();
 		jobTasklistMap = new HashMap<>();
 		waitingMapTasks = new LinkedList<>();
+		activeJobMap = new HashMap<>();
+		completedJobMap = new HashMap<>();
+		jobInfoMap = new HashMap<>();
 		// connectNameNode();
 	}
 
@@ -118,11 +132,9 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) throws RemoteException {
 		System.out.println("INFO: Submit job request received");
-		MapReduce.JobSubmitResponse.Builder jobResponseBuilder = MapReduce.JobSubmitResponse
-				.newBuilder();
+		MapReduce.JobSubmitResponse.Builder jobResponseBuilder = MapReduce.JobSubmitResponse.newBuilder();
 		try {
-			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest
-					.parseFrom(jobSubmitRequest);
+			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest.parseFrom(jobSubmitRequest);
 
 			String mapname = jobSubmit.getMapName();
 			String reducename = jobSubmit.getReducerName();
@@ -139,6 +151,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 						jobSubmit.getNumReduceTasks(), mapname, reducename);
 				waitingJobQueue.add(job);
 				jobResponseBuilder.setJobId(jobIdCnt);
+				jobInfoMap.put(jobIdCnt, job);
 				jobResponseBuilder.setStatus(SUCCESS);
 			}
 
@@ -183,18 +196,17 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private mapreduce.MapReduce.BlockLocations copyBlockLocations(BlockLocations blkLocation) {
 		System.out.println("INFO: Copying block locations..");
-		mapreduce.MapReduce.BlockLocations.Builder mpBlkLocation = mapreduce.MapReduce.BlockLocations
-				.newBuilder();
+		mapreduce.MapReduce.BlockLocations.Builder mpBlkLocation = mapreduce.MapReduce.BlockLocations.newBuilder();
 		mpBlkLocation.setBlockNumber(blkLocation.getBlockNumber());
 		for (DataNodeLocation dloc : blkLocation.getLocationsList()) {
-			System.out.println("DN: IP="+dloc.getIp());
+			System.out.println("DN: IP=" + dloc.getIp());
 			mapreduce.MapReduce.DataNodeLocation.Builder mpDlocBuilder = mapreduce.MapReduce.DataNodeLocation
 					.newBuilder();
 
 			mpDlocBuilder.setIp(dloc.getIp());
 			mpDlocBuilder.setPort(dloc.getPort());
 			mpBlkLocation.addLocations(mpDlocBuilder.build());
-			
+
 		}
 		return mpBlkLocation.build();
 	}
@@ -223,21 +235,20 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 		try {
 			System.out.println("INFO: Getting Block locations..");
-			byte[] blkReqResponse = namenode.getBlockLocations(blkLocReqBuilder.build()
-					.toByteArray());
+			byte[] blkReqResponse = namenode.getBlockLocations(blkLocReqBuilder.build().toByteArray());
 			BlockLocationResponse blkResp = BlockLocationResponse.parseFrom(blkReqResponse);
 			int taskId = 1;
 			System.out.println("INFO: Processing block location response..");
 			for (BlockLocations blkLocation : blkResp.getBlockLocationsList()) {
 				List<Integer> tidlist = null;
-				if(jobTasklistMap.containsKey(job.getJobId())){
+				if (jobTasklistMap.containsKey(job.getJobId())) {
 					tidlist = jobTasklistMap.get(job.getJobId());
-					
-				}else{
+
+				} else {
 					tidlist = new ArrayList<Integer>();
 				}
 				tidlist.add(taskId);
-				jobTasklistMap.put(job.getJobId(),tidlist);
+				jobTasklistMap.put(job.getJobId(), tidlist);
 				mapreduce.MapReduce.BlockLocations mpBlkLocation = copyBlockLocations(blkLocation);
 				MapTaskInfo.Builder mapTaskBuilder = MapTaskInfo.newBuilder();
 				mapTaskBuilder.setJobId(job.getJobId());
@@ -260,9 +271,63 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		return null;
 	}
 
+	private HeartBeatResponse.Builder processWaitingMapTask(HeartBeatResponse.Builder heartBeatResponse,
+			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest, int freeMapSlots)
+					throws InvalidProtocolBufferException {
+		System.out.println("INFO: Free Map Slots available is " + freeMapSlots);
+		if (freeMapSlots != 0 && !waitingMapTasks.isEmpty()) {
+			System.out.println("INFO: Assigning map Task to " + heartBeatRequest.getTaskTrackerId());
+			int count = Math.min(freeMapSlots, waitingMapTasks.size());
+			heartBeatResponse.setStatus(SUCCESS);
+			for (int i = 0; i < count; i++) {
+				// pop from waiting queue
+				MapTaskInfo maptask = waitingMapTasks.poll();
+				// add it in heartbeat response
+				heartBeatResponse.addMapTasks(maptask);
+				// add it to active map
+				int jobId = maptask.getJobId();
+				if (activeJobMap.containsKey(jobId)) {
+					// need to modify the values
+					System.out.println("INFO: Modifying the jobStatusResponse node for jobId: "+jobId);
+					JobStatusResponse.Builder jobStatusResponse = activeJobMap.get(jobId);
+					jobStatusResponse.setNumMapTasksStarted(jobStatusResponse.getNumMapTasksStarted()+1);
+					activeJobMap.put(jobId, jobStatusResponse);
+					
+					
+					
+				} else {
+					// add new pair to map
+					System.out.println("INFO: Adding new pair to active map ");
+					JobStatusResponse.Builder jobStatusResponse = JobStatusResponse.newBuilder();
+					jobStatusResponse.setJobDone(false);
+					int totalMapTask = jobTasklistMap.get(jobId).size();
+					jobStatusResponse.setTotalMapTasks(totalMapTask);
+					jobStatusResponse.setNumMapTasksStarted(1);
+					jobStatusResponse.setTotalReduceTasks(jobInfoMap.get(jobId).getReducersCnt());
+					jobStatusResponse.setNumReduceTasksStarted(0);
+					activeJobMap.put(jobId, jobStatusResponse);
+				}
+
+			}
+		} else {
+			System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
+		}
+		return heartBeatResponse;
+	}
+
 	@Override
-	public byte[] heartBeat(byte[] heartbeatRequest) throws RemoteException {
-		// TODO Auto-generated method stub
+	public byte[] heartBeat(byte[] heartbeatRequestByte) throws RemoteException {
+
+		HeartBeatResponse.Builder heartBeatResponse = HeartBeatResponse.newBuilder();
+		try {
+			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest = mapreduce.MapReduce.HeartBeatRequest
+					.parseFrom(heartbeatRequestByte);
+			System.out.println("INFO: Recieved heartbeat request from: " + heartBeatRequest.getTaskTrackerId());
+			int freeMapSlots = heartBeatRequest.getNumMapSlotsFree();
+			heartBeatResponse = processWaitingMapTask(heartBeatResponse, heartBeatRequest, freeMapSlots);
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 
