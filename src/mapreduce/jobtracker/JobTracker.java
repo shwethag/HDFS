@@ -1,7 +1,5 @@
 package mapreduce.jobtracker;
 
-import hdfs.Hdfs;
-
 import java.io.File;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
@@ -10,6 +8,7 @@ import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,18 +18,19 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Scanner;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import INameNode.INameNode;
+import hdfs.Hdfs;
 import mapreduce.MapReduce;
 import mapreduce.MapReduce.MapTaskInfo;
-import INameNode.INameNode;
-
-import com.google.protobuf.InvalidProtocolBufferException;
 
 public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private static final String EQUALS = "=";
-	private static final String TASK_TRACKER_IPS = "./config/tasktrackerip.ini";
+	private static final String TASK_TRACKER_IPS = "./config/tasktracker.ini";
 	private static final String CONFIG_FILE = "./config/config.ini";
-	private static final String MAPPERS_REDUCERS = "mappers_reducers.ini";
+	private static final String MAPPERS_REDUCERS = "./config/mappers_reducers.ini";
 	private static final long serialVersionUID = 1L;
 	private static final int SUCCESS = 1;
 	private static final int FAILURE = 0;
@@ -52,7 +52,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		super();
 		System.out.println("INFO : Started Job tracker");
 		waitingJobQueue = new LinkedList<>();
-		connectNameNode();
+		//connectNameNode();
 	}
 
 	static {
@@ -90,6 +90,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			}
 		} catch (IOException e) {
 			System.out.println("Error loading init files");
+			e.printStackTrace();
 		} finally {
 			if (sc != null)
 				sc.close();
@@ -102,6 +103,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 		try {
 			Registry registry = LocateRegistry.getRegistry(namenodeIp);
+			System.out.println("INFO: NameNode IP:"+namenodeIp);
 			namenode = (INameNode) registry.lookup("NameNode");
 		} catch ( RemoteException | NotBoundException e) {
 			System.out.println("ERROR: Error in connecting to namenode...");
@@ -110,7 +112,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	}
 	
 	@Override
-	public byte[] jobSubmit(byte[] jobSubmitRequest) {
+	public byte[] jobSubmit(byte[] jobSubmitRequest) throws RemoteException {
 		System.out.println("INFO: Submit job request received");
 		MapReduce.JobSubmitResponse.Builder jobResponseBuilder = MapReduce.JobSubmitResponse
 				.newBuilder();
@@ -204,13 +206,13 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	}
 
 	@Override
-	public byte[] getJobStatus(byte[] jobStatusRequest) {
+	public byte[] getJobStatus(byte[] jobStatusRequest) throws RemoteException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public byte[] heartBeat(byte[] heartbeatRequest) {
+	public byte[] heartBeat(byte[] heartbeatRequest) throws RemoteException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -220,10 +222,18 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			System.setSecurityManager(new RMISecurityManager());
 
 		try {
+			Registry registry;
 			final JobTracker jobTracker = new JobTracker();
-			Registry registry = LocateRegistry.createRegistry(1099);
+			try{
+				registry = LocateRegistry.createRegistry(1099);
+			}
+			catch(ExportException e){
+				System.out.println("Registry already created.. getting the registry");
+				registry = LocateRegistry.getRegistry(1099);
+			}
 			registry.bind("JobTracker", jobTracker);
 			System.out.println("Service Bound..");
+			jobTracker.connectNameNode();
 			new Thread(new Runnable() {
 
 				@Override

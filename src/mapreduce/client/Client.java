@@ -91,12 +91,16 @@ public class Client {
 		jobSubmitRequest.setOutputFile(outputFileinHdfs);
 		jobSubmitRequest.setNumReduceTasks(numOfReducers);
 		int jobId=-1;
-		byte[] jobSubmitResponseByte = jobTracker.jobSubmit(jobSubmitRequest.build().toByteArray());
+		byte[] jobSubmitResponseByte;
 		try {
+			jobSubmitResponseByte = jobTracker.jobSubmit(jobSubmitRequest.build().toByteArray());
+		
 			MapReduce.JobSubmitResponse jobSubmitResponse = MapReduce.JobSubmitResponse.parseFrom(jobSubmitResponseByte);
 			jobId=jobSubmitResponse.getJobId();
 		} catch (InvalidProtocolBufferException e) {
 			e.printStackTrace();
+		} catch (RemoteException e1) {
+			e1.printStackTrace();
 		}
 		return jobId;
 	}
