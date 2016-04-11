@@ -90,14 +90,14 @@ public class TaskTracker {
 		}
 		
 		MapperThreadPool.flushCompletedList();
-		
+		try {
 		
 		System.out.println("INFO: Appending Task status to heartbeat was successfull");
 		byte[] heartBeatResponseByte = jobTracker.heartBeat(heartBeatBuilder.build().toByteArray());
-		try {
+		
 			System.out.println("INFO: Recieved heartbeat response from Job tracker");
 			heartBeatResponse= MapReduce.HeartBeatResponse.parseFrom(heartBeatResponseByte);
-		} catch (InvalidProtocolBufferException e) {
+		} catch (InvalidProtocolBufferException | RemoteException e) {
 			e.printStackTrace();
 		}
 		return heartBeatResponse;

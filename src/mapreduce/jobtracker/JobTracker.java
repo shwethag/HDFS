@@ -55,7 +55,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private static String namenodeIp;
 	private INameNode namenode;
 	private Queue<Job> waitingJobQueue;
-	private Map<Integer,Job> jobInfoMap;
+	private Map<Integer, Job> jobInfoMap;
 	private Map<Integer, List<Integer>> jobTasklistMap;
 	private Queue<MapTaskInfo> waitingMapTasks;
 	private Map<Integer, JobStatusResponse.Builder> activeJobMap;
@@ -150,6 +150,17 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				Job job = new Job(jobIdCnt, jobSubmit.getInputFile(), jobSubmit.getOutputFile(),
 						jobSubmit.getNumReduceTasks(), mapname, reducename);
 				waitingJobQueue.add(job);
+				// add new pair to map
+				int jobId = jobIdCnt;
+				System.out.println("INFO: Adding new pair to active map ");
+				JobStatusResponse.Builder jobStatusResponse = JobStatusResponse.newBuilder();
+				jobStatusResponse.setJobDone(false);
+				int totalMapTask = jobTasklistMap.get(jobId).size();
+				jobStatusResponse.setTotalMapTasks(totalMapTask);
+				jobStatusResponse.setNumMapTasksStarted(0);
+				jobStatusResponse.setTotalReduceTasks(jobInfoMap.get(jobId).getReducersCnt());
+				jobStatusResponse.setNumReduceTasksStarted(0);
+				activeJobMap.put(jobId, jobStatusResponse);
 				jobResponseBuilder.setJobId(jobIdCnt);
 				jobInfoMap.put(jobIdCnt, job);
 				jobResponseBuilder.setStatus(SUCCESS);
@@ -286,28 +297,11 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				heartBeatResponse.addMapTasks(maptask);
 				// add it to active map
 				int jobId = maptask.getJobId();
-				if (activeJobMap.containsKey(jobId)) {
-					// need to modify the values
-					System.out.println("INFO: Modifying the jobStatusResponse node for jobId: "+jobId);
-					JobStatusResponse.Builder jobStatusResponse = activeJobMap.get(jobId);
-					jobStatusResponse.setNumMapTasksStarted(jobStatusResponse.getNumMapTasksStarted()+1);
-					activeJobMap.put(jobId, jobStatusResponse);
-					
-					
-					
-				} else {
-					// add new pair to map
-					System.out.println("INFO: Adding new pair to active map ");
-					JobStatusResponse.Builder jobStatusResponse = JobStatusResponse.newBuilder();
-					jobStatusResponse.setJobDone(false);
-					int totalMapTask = jobTasklistMap.get(jobId).size();
-					jobStatusResponse.setTotalMapTasks(totalMapTask);
-					jobStatusResponse.setNumMapTasksStarted(1);
-					jobStatusResponse.setTotalReduceTasks(jobInfoMap.get(jobId).getReducersCnt());
-					jobStatusResponse.setNumReduceTasksStarted(0);
-					activeJobMap.put(jobId, jobStatusResponse);
-				}
-
+				// need to modify the values
+				System.out.println("INFO: Modifying the jobStatusResponse node for jobId: " + jobId);
+				JobStatusResponse.Builder jobStatusResponse = activeJobMap.get(jobId);
+				jobStatusResponse.setNumMapTasksStarted(jobStatusResponse.getNumMapTasksStarted() + 1);
+				activeJobMap.put(jobId, jobStatusResponse);
 			}
 		} else {
 			System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
@@ -325,10 +319,18 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			System.out.println("INFO: Recieved heartbeat request from: " + heartBeatRequest.getTaskTrackerId());
 			int freeMapSlots = heartBeatRequest.getNumMapSlotsFree();
 			heartBeatResponse = processWaitingMapTask(heartBeatResponse, heartBeatRequest, freeMapSlots);
+			// TODO: process waiting reduce task
+			// TODO: process mapStatus (i.e MapTaskStatus abt completion of
+			// previous tasks)
+			// TODO: process reduceTaskStatus (i.e abt completion of previous
+			// tasks)
 		} catch (InvalidProtocolBufferException e) {
 			e.printStackTrace();
+			heartBeatResponse.setStatus(FAILURE);
+			return heartBeatResponse.build().toByteArray();
 		}
-		return null;
+		heartBeatResponse.setStatus(SUCCESS);
+		return heartBeatResponse.build().toByteArray();
 	}
 
 	public static void main(String[] args) {
