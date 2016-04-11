@@ -40,6 +40,7 @@ public class MapperThreadPool {
 		activeThreadTask = new ArrayList<>();
 		completedThreadTask = new ArrayList<>();
 		mapExecutor = Executors.newFixedThreadPool(maxThreadCount);
+		
 
 	}
 
@@ -90,6 +91,7 @@ class MapWorker implements Runnable {
 		PrintWriter pr = null;
 		try {
 			pr = new PrintWriter(new File(fileName));
+			System.out.println("INFO: to bind class dynamically: "+mapTaskInfo.getMapName());
 			Class cls = Class.forName(mapTaskInfo.getMapName());
 			IMapper mapper = (IMapper) cls.newInstance();
 

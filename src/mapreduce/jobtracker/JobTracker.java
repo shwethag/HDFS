@@ -155,10 +155,10 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				System.out.println("INFO: Adding new pair to active map ");
 				JobStatusResponse.Builder jobStatusResponse = JobStatusResponse.newBuilder();
 				jobStatusResponse.setJobDone(false);
-				int totalMapTask = jobTasklistMap.get(jobId).size();
-				jobStatusResponse.setTotalMapTasks(totalMapTask);
+				//int totalMapTask = jobTasklistMap.get(jobId).size();
+				//jobStatusResponse.setTotalMapTasks(totalMapTask);
 				jobStatusResponse.setNumMapTasksStarted(0);
-				jobStatusResponse.setTotalReduceTasks(jobInfoMap.get(jobId).getReducersCnt());
+				//jobStatusResponse.setTotalReduceTasks(jobInfoMap.get(jobId).getReducersCnt());
 				jobStatusResponse.setNumReduceTasksStarted(0);
 				activeJobMap.put(jobId, jobStatusResponse);
 				jobResponseBuilder.setJobId(jobIdCnt);
@@ -269,6 +269,10 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				waitingMapTasks.add(mapTaskBuilder.build());
 				taskId++;
 			}
+			JobStatusResponse.Builder jobBuilder=activeJobMap.get(job.getJobId());
+			jobBuilder.setTotalMapTasks(taskId-1);
+			jobBuilder.setTotalReduceTasks(jobInfoMap.get(job.getJobId()).getReducersCnt());
+			activeJobMap.put(job.getJobId(), jobBuilder);
 		} catch (RemoteException | InvalidProtocolBufferException e) {
 			System.out.println("ERROR: Failed to get block locations..");
 			e.printStackTrace();
