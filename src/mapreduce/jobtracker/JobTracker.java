@@ -1,8 +1,11 @@
 package mapreduce.jobtracker;
 
+import hdfs.Hdfs;
+
 import java.io.File;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -14,10 +17,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Scanner;
 
 import mapreduce.MapReduce;
+import mapreduce.MapReduce.MapTaskInfo;
+import INameNode.INameNode;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -25,6 +29,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private static final String EQUALS = "=";
 	private static final String TASK_TRACKER_IPS = "./config/tasktrackerip.ini";
+	private static final String CONFIG_FILE = "./config/config.ini";
 	private static final String MAPPERS_REDUCERS = "mappers_reducers.ini";
 	private static final long serialVersionUID = 1L;
 	private static final int SUCCESS = 1;
@@ -33,13 +38,21 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private static int jobIdCnt = 0;
 	private static List<MapReducePair> mappersReducersList;
 	private static final Map<Integer, String> tt_id_ip;
+	private static final String NAMENODE = "namenode";
 
-	private Queue<Job> jobQueue;
+	private static String namenodeIp;
+	private INameNode namenode;
+	private Queue<Job> waitingJobQueue;
+	private Map<Integer,List<Integer>> jobTasklistMap;
+	private Queue<MapTaskInfo> waitingMapTasks;
+	
+	
 
 	public JobTracker() throws RemoteException {
 		super();
 		System.out.println("INFO : Started Job tracker");
-		jobQueue = new LinkedList<>();
+		waitingJobQueue = new LinkedList<>();
+		connectNameNode();
 	}
 
 	static {
@@ -65,6 +78,16 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				tt_id_ip.put(Integer.parseInt(id_ip[0]), id_ip[1]);
 			}
 			sc.close();
+			
+			sc = new Scanner(new File(CONFIG_FILE));
+			System.out.println("INFO: Loading namenode ip");
+			String data[];
+			while (sc.hasNext()) {
+				data = sc.nextLine().split("=");
+				if (NAMENODE.equals(data[0])) {
+				 namenodeIp = data[1];
+				}
+			}
 		} catch (IOException e) {
 			System.out.println("Error loading init files");
 		} finally {
@@ -73,6 +96,18 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 	}
 
+	private void connectNameNode(){
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
+		try {
+			Registry registry = LocateRegistry.getRegistry(namenodeIp);
+			namenode = (INameNode) registry.lookup("NameNode");
+		} catch ( RemoteException | NotBoundException e) {
+			System.out.println("ERROR: Error in connecting to namenode...");
+			e.printStackTrace();
+		}
+	}
 	
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) {
@@ -96,7 +131,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				jobIdCnt++;
 				Job job = new Job(jobIdCnt, jobSubmit.getInputFile(), jobSubmit.getOutputFile(),
 						jobSubmit.getNumReduceTasks(), mapname, reducename);
-				jobQueue.add(job);
+				waitingJobQueue.add(job);
 				jobResponseBuilder.setJobId(jobIdCnt);
 				jobResponseBuilder.setStatus(SUCCESS);
 			}
@@ -107,6 +142,65 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 		System.out.println("INFO: Sending job response");
 		return jobResponseBuilder.build().toByteArray();
+	}
+	
+	private byte[] constructOpen(String fileName, boolean isRead) {
+		Hdfs.OpenFileRequest.Builder openBuilder = Hdfs.OpenFileRequest.newBuilder();
+		openBuilder.setFileName(fileName);
+		openBuilder.setForRead(isRead);
+		return openBuilder.build().toByteArray();
+	}
+	
+	private Hdfs.OpenFileResponse open(String fileName, boolean forRead) {
+		if (namenode == null) {
+			System.out.println("Name node is not connected ");
+			return null;
+		}
+		byte[] openReq = constructOpen(fileName, forRead);
+		byte[] responseArray;
+		try {
+			responseArray = namenode.openFile(openReq);
+			Hdfs.OpenFileResponse response = Hdfs.OpenFileResponse.parseFrom(responseArray);
+			if (response.getStatus() == FAILURE) {
+				System.out.println("Namenode not allowing to open file....");
+				return null;
+			}
+			return response;
+		} catch (RemoteException | InvalidProtocolBufferException e) {
+			System.out.println("ERROR: Exception in opening request...");
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+	
+	private void processWaitingQueue(){
+		Job job;
+		synchronized (jobLock) {
+			if(waitingJobQueue.isEmpty()){
+				System.out.println("INFO: No jobs in waiting queue");
+				return;
+			}
+			job = waitingJobQueue.poll();
+		}
+		Hdfs.OpenFileResponse fileInfo = open(job.getInputFileName(), true);
+		if(fileInfo == null){
+			System.out.println("ERROR: File not present in HDFS");
+			//TODO: Inform client the same
+			return;
+		}
+		List<Integer> blockNums = fileInfo.getBlockNumsList();
+	
+		
+		for(int blk : blockNums){
+			System.out.println(blk);
+		}
+		/*
+		 * 1. get blocs from namenode
+		 * 2. Create n maptasks
+		 * 3. put in maptask map
+		 * 
+		 * */
 	}
 
 	@Override
@@ -136,12 +230,12 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				public void run() {
 					while (true) {
 						try {
-							Thread.sleep(30000);
+							Thread.sleep(2000);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
-						// jobTracker.dumpToFile();
-
+						
+						jobTracker.processWaitingQueue();
 					}
 
 				}
