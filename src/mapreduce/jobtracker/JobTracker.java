@@ -22,6 +22,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import INameNode.INameNode;
 import hdfs.Hdfs;
+import hdfs.Hdfs.BlockLocationRequest;
+import hdfs.Hdfs.BlockLocationResponse;
+import hdfs.Hdfs.BlockLocations;
+import hdfs.Hdfs.DataNodeLocation;
 import mapreduce.MapReduce;
 import mapreduce.MapReduce.MapTaskInfo;
 
@@ -43,16 +47,14 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private static String namenodeIp;
 	private INameNode namenode;
 	private Queue<Job> waitingJobQueue;
-	private Map<Integer,List<Integer>> jobTasklistMap;
+	private Map<Integer, List<Integer>> jobTasklistMap;
 	private Queue<MapTaskInfo> waitingMapTasks;
-	
-	
 
 	public JobTracker() throws RemoteException {
 		super();
 		System.out.println("INFO : Started Job tracker");
 		waitingJobQueue = new LinkedList<>();
-		//connectNameNode();
+		// connectNameNode();
 	}
 
 	static {
@@ -78,14 +80,14 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				tt_id_ip.put(Integer.parseInt(id_ip[0]), id_ip[1]);
 			}
 			sc.close();
-			
+
 			sc = new Scanner(new File(CONFIG_FILE));
 			System.out.println("INFO: Loading namenode ip");
 			String data[];
 			while (sc.hasNext()) {
 				data = sc.nextLine().split("=");
 				if (NAMENODE.equals(data[0])) {
-				 namenodeIp = data[1];
+					namenodeIp = data[1];
 				}
 			}
 		} catch (IOException e) {
@@ -97,20 +99,20 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 	}
 
-	private void connectNameNode(){
+	private void connectNameNode() {
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new RMISecurityManager());
 		}
 		try {
 			Registry registry = LocateRegistry.getRegistry(namenodeIp);
-			System.out.println("INFO: NameNode IP:"+namenodeIp);
+			System.out.println("INFO: NameNode IP:" + namenodeIp);
 			namenode = (INameNode) registry.lookup("NameNode");
-		} catch ( RemoteException | NotBoundException e) {
+		} catch (RemoteException | NotBoundException e) {
 			System.out.println("ERROR: Error in connecting to namenode...");
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) throws RemoteException {
 		System.out.println("INFO: Submit job request received");
@@ -119,7 +121,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		try {
 			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest
 					.parseFrom(jobSubmitRequest);
-			
+
 			String mapname = jobSubmit.getMapName();
 			String reducename = jobSubmit.getReducerName();
 			MapReducePair mrPair = new MapReducePair(mapname, reducename);
@@ -145,15 +147,16 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		System.out.println("INFO: Sending job response");
 		return jobResponseBuilder.build().toByteArray();
 	}
-	
+
 	private byte[] constructOpen(String fileName, boolean isRead) {
 		Hdfs.OpenFileRequest.Builder openBuilder = Hdfs.OpenFileRequest.newBuilder();
 		openBuilder.setFileName(fileName);
 		openBuilder.setForRead(isRead);
 		return openBuilder.build().toByteArray();
 	}
-	
+
 	private Hdfs.OpenFileResponse open(String fileName, boolean forRead) {
+		System.out.println("Opening file in HDFS..");
 		if (namenode == null) {
 			System.out.println("Name node is not connected ");
 			return null;
@@ -175,34 +178,78 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 
 	}
-	
-	private void processWaitingQueue(){
+
+	private mapreduce.MapReduce.BlockLocations copyBlockLocations(BlockLocations blkLocation) {
+		System.out.println("INFO: Copying block locations..");
+		mapreduce.MapReduce.BlockLocations.Builder mpBlkLocation = mapreduce.MapReduce.BlockLocations
+				.newBuilder();
+		mpBlkLocation.setBlockNumber(blkLocation.getBlockNumber());
+		for (DataNodeLocation dloc : blkLocation.getLocationsList()) {
+			System.out.println("DN: IP="+dloc.getIp());
+			mapreduce.MapReduce.DataNodeLocation.Builder mpDlocBuilder = mapreduce.MapReduce.DataNodeLocation
+					.newBuilder();
+
+			mpDlocBuilder.setIp(dloc.getIp());
+			mpDlocBuilder.setPort(dloc.getPort());
+			mpBlkLocation.addLocations(mpDlocBuilder.build());
+			
+		}
+		return mpBlkLocation.build();
+	}
+
+	private void processWaitingQueue() {
+		System.out.println("INFO: Processing waiting queue");
 		Job job;
 		synchronized (jobLock) {
-			if(waitingJobQueue.isEmpty()){
+			if (waitingJobQueue.isEmpty()) {
 				System.out.println("INFO: No jobs in waiting queue");
 				return;
 			}
 			job = waitingJobQueue.poll();
 		}
 		Hdfs.OpenFileResponse fileInfo = open(job.getInputFileName(), true);
-		if(fileInfo == null){
+		if (fileInfo == null) {
 			System.out.println("ERROR: File not present in HDFS");
-			//TODO: Inform client the same
+			// TODO: Inform client the same
 			return;
 		}
+		System.out.println("INFO: Getting block numbers list");
 		List<Integer> blockNums = fileInfo.getBlockNumsList();
-	
-		
-		for(int blk : blockNums){
-			System.out.println(blk);
+
+		BlockLocationRequest.Builder blkLocReqBuilder = BlockLocationRequest.newBuilder();
+		blkLocReqBuilder.addAllBlockNums(blockNums);
+
+		try {
+			System.out.println("INFO: Getting Block locations..");
+			byte[] blkReqResponse = namenode.getBlockLocations(blkLocReqBuilder.build()
+					.toByteArray());
+			BlockLocationResponse blkResp = BlockLocationResponse.parseFrom(blkReqResponse);
+			int taskId = 1;
+			System.out.println("INFO: Processing block location response..");
+			for (BlockLocations blkLocation : blkResp.getBlockLocationsList()) {
+				List<Integer> tidlist = null;
+				if(jobTasklistMap.containsKey(job.getJobId())){
+					tidlist = jobTasklistMap.get(job.getJobId());
+					
+				}else{
+					tidlist = new ArrayList<Integer>();
+				}
+				tidlist.add(taskId);
+				jobTasklistMap.put(job.getJobId(),tidlist);
+				mapreduce.MapReduce.BlockLocations mpBlkLocation = copyBlockLocations(blkLocation);
+				MapTaskInfo.Builder mapTaskBuilder = MapTaskInfo.newBuilder();
+				mapTaskBuilder.setJobId(job.getJobId());
+				mapTaskBuilder.setTaskId(taskId);
+				mapTaskBuilder.setMapName(job.getMapName());
+				mapTaskBuilder.addInputBlocks(mpBlkLocation);
+				waitingMapTasks.add(mapTaskBuilder.build());
+				taskId++;
+			}
+		} catch (RemoteException | InvalidProtocolBufferException e) {
+			System.out.println("ERROR: Failed to get block locations..");
+			e.printStackTrace();
+			return;
 		}
-		/*
-		 * 1. get blocs from namenode
-		 * 2. Create n maptasks
-		 * 3. put in maptask map
-		 * 
-		 * */
 	}
 
 	@Override
@@ -224,10 +271,9 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		try {
 			Registry registry;
 			final JobTracker jobTracker = new JobTracker();
-			try{
+			try {
 				registry = LocateRegistry.createRegistry(1099);
-			}
-			catch(ExportException e){
+			} catch (ExportException e) {
 				System.out.println("Registry already created.. getting the registry");
 				registry = LocateRegistry.getRegistry(1099);
 			}
@@ -244,7 +290,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
-						
+
 						jobTracker.processWaitingQueue();
 					}
 
