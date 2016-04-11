@@ -4,6 +4,7 @@ import hdfs.Hdfs;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
@@ -14,6 +15,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -28,12 +30,30 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 public class MapperThreadPool {
+	private static final String SEARCH_FILE = "./config/searchword.ini";
+	public static String searchterm;
 	public static int maxThreadCount = 3;
 	public static int availableCount = maxThreadCount;
 	public static Object lock = new Object();
 	public static List<MapTaskStatus> activeThreadTask = null;
 	public static List<MapTaskStatus> completedThreadTask = null;
 	private ExecutorService mapExecutor = null;
+	
+	
+	static{
+		Scanner sc = null;
+		try {
+			sc = new Scanner(new File(SEARCH_FILE));
+			if (sc.hasNext()) {
+				searchterm = sc.nextLine();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (sc != null)
+				sc.close();
+		}
+	}
 
 	public MapperThreadPool() {
 		System.out.println("INFO: Mapper Thread Constructor Started");
@@ -97,7 +117,7 @@ class MapWorker implements Runnable {
 
 			String[] lines = blockString.toStringUtf8().split(NEWLINE);
 			for (String line : lines) {
-				String res = mapper.map(line);
+				String res = mapper.map(line,MapperThreadPool.searchterm);
 				if (res != null)
 					pr.println(res);
 			}
