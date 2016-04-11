@@ -23,7 +23,7 @@ public class Client {
 	private String mapName,reducerName,inputFileinHdfs,outputFileinHdfs;
 	private int numOfReducers;
 	 
-	Client(String mapName,String reduceName,String inpFile,String outFile,int numReducers){
+	public Client(String mapName,String reduceName,String inpFile,String outFile,int numReducers){
 		System.out.println("Info: Connecting to Jobtracker:"+jobTrackerIP);
 		connectToJobTracker();
 		this.mapName=mapName;
@@ -102,7 +102,7 @@ public class Client {
 	}
 	
 	public void checkForJobStatus(){
-		
+		//TODO: check for Job Status
 	}
 	
 	public static void main(String[] args) {
