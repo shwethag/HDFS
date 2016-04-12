@@ -51,7 +51,6 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private static final Map<Integer, String> tt_id_ip;
 
 	private Connector connector;
-	private INameNode namenode;
 	private Queue<Job> waitingJobQueue;
 	private Map<Integer, Job> jobInfoMap;
 	private Map<Integer, List<Integer>> jobTasklistMap; // JOBID, Task id list
@@ -209,7 +208,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 		try {
 			System.out.println("INFO: Getting Block locations..");
-			byte[] blkReqResponse = namenode.getBlockLocations(blkLocReqBuilder.build()
+			byte[] blkReqResponse = connector.namenode.getBlockLocations(blkLocReqBuilder.build()
 					.toByteArray());
 			BlockLocationResponse blkResp = BlockLocationResponse.parseFrom(blkReqResponse);
 			int taskId = 1;
