@@ -74,12 +74,12 @@ public class TaskTracker {
 	}
 	
 	public MapReduce.HeartBeatResponse sendHeartBeat(){
-		System.out.println("INFO: Sending HeartBeat");
+		//System.out.println("INFO: Sending HeartBeat");
 		MapReduce.HeartBeatRequest.Builder heartBeatBuilder = MapReduce.HeartBeatRequest.newBuilder();
 		MapReduce.HeartBeatResponse heartBeatResponse = null;
 		heartBeatBuilder.setTaskTrackerId(tid);
 		heartBeatBuilder.setNumMapSlotsFree(MapperThreadPool.availableCount);
-		System.out.println("INFO: Attaching tib and freeslots to heartbeat successfull");
+		//System.out.println("INFO: Attaching tib and freeslots to heartbeat successfull");
 		//TODO: Need to add info of reducer Thread pool
 		for ( MapTaskStatus mapTaskStatus : MapperThreadPool.activeThreadTask) {
 			heartBeatBuilder.addMapStatus(mapTaskStatus);
@@ -92,10 +92,10 @@ public class TaskTracker {
 		MapperThreadPool.flushCompletedList();
 		try {
 		
-		System.out.println("INFO: Appending Task status to heartbeat was successfull");
+		//System.out.println("INFO: Appending Task status to heartbeat was successfull");
 		byte[] heartBeatResponseByte = jobTracker.heartBeat(heartBeatBuilder.build().toByteArray());
 		
-			System.out.println("INFO: Recieved heartbeat response from Job tracker");
+			//System.out.println("INFO: Recieved heartbeat response from Job tracker");
 			heartBeatResponse= MapReduce.HeartBeatResponse.parseFrom(heartBeatResponseByte);
 		} catch (InvalidProtocolBufferException | RemoteException e) {
 			e.printStackTrace();
@@ -105,8 +105,8 @@ public class TaskTracker {
 	}
 	
 	public void assignTaskToThread(HeartBeatResponse heartBeatResponse){
-		System.out.println("INFO: Assigning JT requested tasks to thread");
-		System.out.println("INFO: Checking MapTasks");
+		//System.out.println("INFO: Assigning JT requested tasks to thread");
+		//System.out.println("INFO: Checking MapTasks");
 		for (MapTaskInfo mapTaskInfo : heartBeatResponse.getMapTasksList()) {
 			mapperThreadPool.addNewMapTask(mapTaskInfo);
 		}
@@ -117,7 +117,7 @@ public class TaskTracker {
 		*/
 		
 		
-		System.out.println("INFO: Checking ReduceTasks");
+		//System.out.println("INFO: Checking ReduceTasks");
 	}
 	
 	public static void main(String[] args) {

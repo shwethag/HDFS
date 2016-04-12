@@ -1,13 +1,9 @@
 package mapreduce.tasktracker;
 
-import hdfs.Hdfs;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -19,18 +15,28 @@ import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import IDataNode.IDataNode;
+import INameNode.INameNode;
+import hdfs.Hdfs;
+import hdfs.Client;
 import mapreduce.IMapper;
 import mapreduce.MapReduce.BlockLocations;
 import mapreduce.MapReduce.DataNodeLocation;
 import mapreduce.MapReduce.MapTaskInfo;
 import mapreduce.MapReduce.MapTaskStatus;
-import IDataNode.IDataNode;
-
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 
 public class MapperThreadPool {
 	private static final String SEARCH_FILE = "./config/searchword.ini";
+	private static final String CONFIG = "./config/config.ini";
+	private static final String BLOCK = "blocksize";
+	private static final String NAMENODE = "namenode";
+	private static int blockSize;
+	private static String namenodeIp;
+	private static INameNode namenode;
+	
 	public static String searchterm;
 	public static int maxThreadCount = 3;
 	public static int availableCount = maxThreadCount;
@@ -42,16 +48,45 @@ public class MapperThreadPool {
 	
 	static{
 		Scanner sc = null;
+		String data[];
 		try {
 			sc = new Scanner(new File(SEARCH_FILE));
 			if (sc.hasNext()) {
 				searchterm = sc.nextLine();
+			}
+			sc.close();
+			sc = new Scanner(new File(CONFIG));
+			while (sc.hasNext()) {
+				data = sc.nextLine().split("=");
+				if (BLOCK.equals(data[0])) {
+					blockSize = Integer.parseInt(data[1]);
+					System.out.println("INFO: block size " + blockSize);
+				} else if (NAMENODE.equals(data[0])) {
+					namenodeIp = data[1];
+				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
 			if (sc != null)
 				sc.close();
+		}
+		
+		
+		//To Connect to Name Node
+		connectNameNode();
+	}
+	
+	private static void connectNameNode() {
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
+		try {
+			Registry registry = LocateRegistry.getRegistry(namenodeIp);
+			namenode = (INameNode) registry.lookup("NameNode");
+		} catch ( RemoteException | NotBoundException e) {
+			System.out.println("ERROR: Error in PUT request...Returning......");
+			e.printStackTrace();
 		}
 	}
 
@@ -136,6 +171,11 @@ class MapWorker implements Runnable {
 				pr.close();
 		}
 	}
+	
+	public void dumpMapFileToHDFS(){
+		String fileName = "job_" + mapTaskInfo.getJobId() + "_map_" + mapTaskInfo.getTaskId();
+		System.out.println("INFO: Dumping file: "+fileName+"");
+	}
 
 	public void executeMapTask() {
 		// Connect to data Node to get Block
@@ -183,6 +223,8 @@ class MapWorker implements Runnable {
 		handleMapFunction(s);
 		// Store the output in a file
 		// Once done upload the result file to HDFS and return the file
+		dumpMapFileToHDFS();
+		
 		// information in mapTaskStatus
 
 	}

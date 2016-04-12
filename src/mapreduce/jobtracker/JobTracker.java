@@ -79,6 +79,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		completedJobMap = new HashMap<>();
 		jobInfoMap = new HashMap<>();
 		jobOpFileList = new HashMap<>();
+		activeReducerJobMap = new HashMap<>();
 		// connectNameNode();
 	}
 
@@ -175,6 +176,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				jobResponseBuilder.setJobId(jobIdCnt);
 				jobInfoMap.put(jobIdCnt, job);
 				jobOpFileList.put(jobId, new ArrayList<String>());
+				
 				jobResponseBuilder.setStatus(SUCCESS);
 			}
 
@@ -377,8 +379,8 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		try {
 			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest = mapreduce.MapReduce.HeartBeatRequest
 					.parseFrom(heartbeatRequestByte);
-			System.out.println("INFO: Recieved heartbeat request from: "
-					+ heartBeatRequest.getTaskTrackerId());
+			//System.out.println("INFO: Recieved heartbeat request from: "
+			//		+ heartBeatRequest.getTaskTrackerId());
 			int freeMapSlots = heartBeatRequest.getNumMapSlotsFree();
 			heartBeatResponse = processWaitingMapTask(heartBeatResponse, heartBeatRequest,
 					freeMapSlots);
