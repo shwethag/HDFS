@@ -36,7 +36,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 	private HashMap<String, Integer> fileHandlerMap;
 	private HashMap<Integer, Boolean> activeHandleMode;
 	private HashMap<Integer,List<Integer> > blockMap;
-	public static Integer  fileHandleCounter = 1,blockIdCounter=1;
+	public static Integer  fileHandleCounter = 0,blockIdCounter=0;
 	private static final Object assignLock = new Object();
 	private static final Object openLock = new Object();
 	private HashMap<Integer, String> idLocMap;
@@ -85,11 +85,13 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 					break;
 				String val[] = line.split(EQUALS);
 				int key=Integer.parseInt(val[0]);
+				fileHandleCounter = Math.max(fileHandleCounter, key );
 				System.out.println(line);
 				String values[] = val[1].split(COMMA);
 				List<Integer> blockNums = new ArrayList<>();
 				for(int i=0;i<values.length;i++){
 					blockNums.add(Integer.parseInt(values[i]));
+					blockIdCounter = Math.max(Integer.parseInt(values[i]), blockIdCounter);
 				}
 				blockMap.put(key, blockNums);
 			}
@@ -99,7 +101,8 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 			if(sc!=null)
 				sc.close();
 		}
-		
+		fileHandleCounter++;
+		blockIdCounter++;
 	
 		
 		System.out.println("INFO: To Load Filehandle Map");

@@ -39,6 +39,8 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 	private static final String NAMENODE = "namenode";
 	private static final String DATA_FOLDER = "./data";
 	private static final String BLOCK_LIST_FILE = "./data_dump/fileblockIds.dat";
+	private static final Object lock = new Object();
+	
 	private int dataNode_ID;
 	private List<Integer> blockIdList;
 	private INameNode namenode;
@@ -95,20 +97,23 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 	}
 	
 	public synchronized void dumpToFile(){
-		PrintWriter pr = null;
-		System.out.println("INFO: Dumping BlockMap to file");
-		try {
-			pr = new PrintWriter(new File(BLOCK_LIST_FILE));
-			for (int blk : blockIdList) {
-				pr.print(blk);
-				pr.print(',');
+		
+			PrintWriter pr = null;
+			System.out.println("INFO: Dumping BlockMap to file");
+			try {
+				pr = new PrintWriter(new File(BLOCK_LIST_FILE));
+				synchronized (lock) {
+					for (int blk : blockIdList) {
+						pr.print(blk);
+						pr.print(',');
+					}
+				}
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}finally{
+				if(pr!=null)
+					pr.close();
 			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}finally{
-			if(pr!=null)
-				pr.close();
-		}
 		
 	}
 
@@ -119,7 +124,11 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 		try {
 			Hdfs.ReadBlockRequest readBlkReq = Hdfs.ReadBlockRequest.parseFrom(inp);
 			int blkNum = readBlkReq.getBlockNumber();
-			if(!blockIdList.contains(blkNum)){
+			boolean isPresent = false;
+			synchronized (lock) {
+				isPresent = blockIdList.contains(blkNum);
+			}
+			if(!isPresent){
 				System.out.println("ERROR: Block not present here.." + blkNum);
 				readBlkResponse.setStatus(FAILURE);
 			}else{
@@ -173,11 +182,14 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 		System.out.println("INFO: Sending block report with id"+ dataNode_ID);
 		Hdfs.BlockReportRequest.Builder blkReportReq = Hdfs.BlockReportRequest.newBuilder();
 		blkReportReq.setId(dataNode_ID);
-		for (Integer blkId : blockIdList) {
-			System.out.println("ind loop");
-			System.out.println("gh:" + blkId +' ' + blkId + ':' );
-			blkReportReq.addBlockNumbers(blkId);
+		synchronized (lock) {
+			for (Integer blkId : blockIdList) {
+				System.out.println("ind loop");
+				System.out.println("gh:" + blkId +' ' + blkId + ':' );
+				blkReportReq.addBlockNumbers(blkId);
+			}
 		}
+		
 		System.out.println();
 		if (namenode == null) {
 			System.out.println("ERROR: Unable to send Block report Name node is not connected ");
@@ -214,7 +226,10 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			}else{
 				System.out.println("INFO: Added block id " + blockNum);
 				writeResBuilder.setStatus(SUCCESS);
-				blockIdList.add(blockNum);
+				synchronized (lock) {
+					blockIdList.add(blockNum);
+				}
+				
 				sendBlockReport();
 				dumpToFile();
 			}

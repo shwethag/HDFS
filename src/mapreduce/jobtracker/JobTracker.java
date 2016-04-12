@@ -307,16 +307,19 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 		return heartBeatResponse;
 	}
+	
+	private HeartBeatResponse.Builder processWaitingReduceTask(
+			HeartBeatResponse.Builder heartBeatResponse,
+			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest)
+			throws InvalidProtocolBufferException {
+		
+		
+		return null;
+	}
 
-	private synchronized void processMapTaskStatus(List<MapTaskStatus> mapStatusList) {
+
+	private void processMapTaskStatus(List<MapTaskStatus> mapStatusList) {
 		System.out.println("INFO: Processing map task status from HB");
-		// check completed map tasks
-		// if completed, update job status builder
-		// move from active list to active reducer list
-		// remove task id from job task list map
-		// put output file of job in jobopfilelist
-		// else ignore
-
 		for (MapTaskStatus mpStatus : mapStatusList) {
 			if (mpStatus.getTaskCompleted()) {
 				int jobId = mpStatus.getJobId();
@@ -334,6 +337,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 					activeMapperJobMap.remove(jobId);
 					System.out.println("INFO: Moving job to active reducer map " + jobId);
 					activeReducerJobMap.put(jobId, jobStatusBuilder);
+					
 
 				} else {
 					jobTasklistMap.put(jobId, taskList);
@@ -352,15 +356,15 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 					.parseFrom(heartbeatRequestByte);
 			// System.out.println("INFO: Recieved heartbeat request from: "
 			// + heartBeatRequest.getTaskTrackerId());
+			/*******Process 1: To handle map status response********/
+			processMapTaskStatus(heartBeatRequest.getMapStatusList());
+			/*******Process 2: To handle reduce status response********/
+			/*******Process 3: To assign new map tasks********/
 			int freeMapSlots = heartBeatRequest.getNumMapSlotsFree();
 			heartBeatResponse = processWaitingMapTask(heartBeatResponse, heartBeatRequest,
 					freeMapSlots);
-			// TODO: process waiting reduce task
-			// TODO: process mapStatus (i.e MapTaskStatus abt completion of
-			// previous tasks)
-			processMapTaskStatus(heartBeatRequest.getMapStatusList());
-			// TODO: process reduceTaskStatus (i.e abt completion of previous
-			// tasks)
+			/*******Process 4: To assign new reduce tasks********/
+			heartBeatResponse = processWaitingReduceTask(heartBeatResponse, heartBeatRequest);
 		} catch (InvalidProtocolBufferException e) {
 			e.printStackTrace();
 			heartBeatResponse.setStatus(FAILURE);
