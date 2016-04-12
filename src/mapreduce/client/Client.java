@@ -10,6 +10,8 @@ import java.rmi.registry.Registry;
 import java.util.Scanner;
 
 import mapreduce.MapReduce;
+import mapreduce.MapReduce.JobStatusRequest;
+import mapreduce.MapReduce.JobStatusResponse;
 import mapreduce.jobtracker.IJobTracker;
 
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -68,7 +70,7 @@ public class Client {
 		}
 	}
 	
-	private void printStatus(int percent){
+	private void printStatus(float percent){
 		percent=percent/10;
 		for(int i=0;i<=11;i++){
 			if(i==0 || i==11){
@@ -105,8 +107,37 @@ public class Client {
 		return jobId;
 	}
 	
-	public void checkForJobStatus(){
-		//TODO: check for Job Status
+	public void checkForJobStatus(int jobId){
+		JobStatusRequest.Builder jobStatusReqBuilder = JobStatusRequest.newBuilder();
+		jobStatusReqBuilder.setJobId(jobId);
+		byte [] jobStatusReq = jobStatusReqBuilder.build().toByteArray(); 
+		while(true){
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			try {
+				byte[] jobStatusRespByte = jobTracker.getJobStatus(jobStatusReq);
+				JobStatusResponse jobStatusResponse = JobStatusResponse.parseFrom(jobStatusRespByte);
+				int mapTasksCnt = jobStatusResponse.getTotalMapTasks();
+				int redTaskCnt = jobStatusResponse.getTotalReduceTasks();
+				int mapTaskStarted = jobStatusResponse.getNumMapTasksStarted();
+				int redTaskStarted = jobStatusResponse.getNumReduceTasksStarted();
+				System.out.println("***Map Task Status****");
+				printStatus(mapTaskStarted/(float)mapTasksCnt);
+				/*System.out.println("***Reduce Task Status****");
+				printStatus(redTaskStarted/(float)redTaskCnt);*/
+				if(jobStatusResponse.getJobDone()){
+					System.out.println("*****JOB is Completed *********" + jobId);
+					break;
+				}
+			} catch (RemoteException | InvalidProtocolBufferException e) {
+				System.out.println("ERROR: connection failure");
+				e.printStackTrace();
+			}
+		}
+
 	}
 	
 	public static void main(String[] args) {
@@ -138,7 +169,7 @@ public class Client {
 		/*
 		 * To get The job Status
 		 */
-		client.checkForJobStatus();
+		client.checkForJobStatus(jobId);
 		
 		
 		
