@@ -272,7 +272,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			
 
 		}
-
+		System.out.println("DEBUG: "+jobStatusBuilder.getStatus() +" "+jobStatusBuilder.getNumMapTasksStarted());
 		return jobStatusBuilder.build().toByteArray();
 	}
 
