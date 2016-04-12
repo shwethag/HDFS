@@ -71,14 +71,16 @@ public class Client {
 	}
 	
 	private void printStatus(float percent){
+		System.out.println("Percentage Completion.. " + percent);
 		percent=percent/10;
+		
 		for(int i=0;i<=11;i++){
 			if(i==0 || i==11){
 				System.out.print("||");
 			}else if(i<=percent){
-				System.out.println("=");
+				System.out.print("=");
 			}else{
-				System.out.println(" ");
+				System.out.print(" ");
 			}
 		}
 		System.out.println();
@@ -119,13 +121,19 @@ public class Client {
 			}
 			try {
 				byte[] jobStatusRespByte = jobTracker.getJobStatus(jobStatusReq);
+				if(jobStatusRespByte == null){
+					System.out.println("ERROR: No response received..");
+					continue;
+				}
 				JobStatusResponse jobStatusResponse = JobStatusResponse.parseFrom(jobStatusRespByte);
+				
 				int mapTasksCnt = jobStatusResponse.getTotalMapTasks();
 				int redTaskCnt = jobStatusResponse.getTotalReduceTasks();
 				int mapTaskStarted = jobStatusResponse.getNumMapTasksStarted();
 				int redTaskStarted = jobStatusResponse.getNumReduceTasksStarted();
 				System.out.println("***Map Task Status****");
-				printStatus(mapTaskStarted/(float)mapTasksCnt);
+				System.out.println("#MapTasks " + mapTasksCnt + " #MapTasksStarted");
+				printStatus(mapTaskStarted/(float)mapTasksCnt*100);
 				/*System.out.println("***Reduce Task Status****");
 				printStatus(redTaskStarted/(float)redTaskCnt);*/
 				if(jobStatusResponse.getJobDone()){
