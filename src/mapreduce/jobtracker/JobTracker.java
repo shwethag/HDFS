@@ -3,7 +3,6 @@ package mapreduce.jobtracker;
 import java.io.File;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -26,20 +25,18 @@ import hdfs.Hdfs.BlockLocationRequest;
 import hdfs.Hdfs.BlockLocationResponse;
 import hdfs.Hdfs.BlockLocations;
 import hdfs.Hdfs.DataNodeLocation;
-import hdfs.Hdfs.HeartBeatRequest;
 import mapreduce.MapReduce;
 import mapreduce.MapReduce.HeartBeatResponse;
-import mapreduce.MapReduce.HeartBeatResponse.Builder;
 import mapreduce.MapReduce.JobStatusResponse;
 import mapreduce.MapReduce.MapTaskInfo;
 import mapreduce.MapReduce.MapTaskStatus;
+import util.Connector;
 
 public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private static final String EQUALS = "=";
 
 	private static final String TASK_TRACKER_IPS = "./config/tasktracker.ini";
-	private static final String CONFIG_FILE = "./config/config.ini";
 	private static final String MAPPERS_REDUCERS = "./config/mappers_reducers.ini";
 
 	private static final long serialVersionUID = 1L;
@@ -52,9 +49,8 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private static List<MapReducePair> mappersReducersList;
 	private static final Map<Integer, String> tt_id_ip;
-	private static final String NAMENODE = "namenode";
 
-	private static String namenodeIp;
+	private Connector connector;
 	private INameNode namenode;
 	private Queue<Job> waitingJobQueue;
 	private Map<Integer, Job> jobInfoMap;
@@ -72,6 +68,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	public JobTracker() throws RemoteException {
 		super();
 		System.out.println("INFO : Started Job tracker");
+		connector = Connector.getConnector();
 		waitingJobQueue = new LinkedList<>();
 		jobTasklistMap = new HashMap<>();
 		waitingMapTasks = new LinkedList<>();
@@ -107,15 +104,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			}
 			sc.close();
 
-			sc = new Scanner(new File(CONFIG_FILE));
-			System.out.println("INFO: Loading namenode ip");
-			String data[];
-			while (sc.hasNext()) {
-				data = sc.nextLine().split("=");
-				if (NAMENODE.equals(data[0])) {
-					namenodeIp = data[1];
-				}
-			}
+			
 		} catch (IOException e) {
 			System.out.println("Error loading init files");
 			e.printStackTrace();
@@ -125,19 +114,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		}
 	}
 
-	private void connectNameNode() {
-		if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new RMISecurityManager());
-		}
-		try {
-			Registry registry = LocateRegistry.getRegistry(namenodeIp);
-			System.out.println("INFO: NameNode IP:" + namenodeIp);
-			namenode = (INameNode) registry.lookup("NameNode");
-		} catch (RemoteException | NotBoundException e) {
-			System.out.println("ERROR: Error in connecting to namenode...");
-			e.printStackTrace();
-		}
-	}
+	
 
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) throws RemoteException {
@@ -188,37 +165,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		return jobResponseBuilder.build().toByteArray();
 	}
 
-	private byte[] constructOpen(String fileName, boolean isRead) {
-		Hdfs.OpenFileRequest.Builder openBuilder = Hdfs.OpenFileRequest.newBuilder();
-		openBuilder.setFileName(fileName);
-		openBuilder.setForRead(isRead);
-		return openBuilder.build().toByteArray();
-	}
-
-	private Hdfs.OpenFileResponse open(String fileName, boolean forRead) {
-		System.out.println("Opening file in HDFS..");
-		if (namenode == null) {
-			System.out.println("Name node is not connected ");
-			return null;
-		}
-		byte[] openReq = constructOpen(fileName, forRead);
-		byte[] responseArray;
-		try {
-			responseArray = namenode.openFile(openReq);
-			Hdfs.OpenFileResponse response = Hdfs.OpenFileResponse.parseFrom(responseArray);
-			if (response.getStatus() == FAILURE) {
-				System.out.println("Namenode not allowing to open file....");
-				return null;
-			}
-			return response;
-		} catch (RemoteException | InvalidProtocolBufferException e) {
-			System.out.println("ERROR: Exception in opening request...");
-			e.printStackTrace();
-			return null;
-		}
-
-	}
-
+	
 	private mapreduce.MapReduce.BlockLocations copyBlockLocations(BlockLocations blkLocation) {
 		System.out.println("INFO: Copying block locations..");
 		mapreduce.MapReduce.BlockLocations.Builder mpBlkLocation = mapreduce.MapReduce.BlockLocations
@@ -248,7 +195,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			job = waitingJobQueue.poll();
 			System.out.println("INFO: New job found.. " + job.getJobId());
 		}
-		Hdfs.OpenFileResponse fileInfo = open(job.getInputFileName(), true);
+		Hdfs.OpenFileResponse fileInfo = connector.open(job.getInputFileName(), true);
 		if (fileInfo == null) {
 			System.out.println("ERROR: File not present in HDFS");
 			// TODO: Inform client the same
@@ -414,7 +361,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			}
 			registry.bind("JobTracker", jobTracker);
 			System.out.println("Service Bound..");
-			jobTracker.connectNameNode();
+			jobTracker.connector.connectNameNode();
 			new Thread(new Runnable() {
 
 				@Override

@@ -20,6 +20,7 @@ import mapreduce.MapReduce.MapTaskInfo;
 import mapreduce.MapReduce.MapTaskStatus;
 import mapreduce.MapReduce.ReducerTaskInfo;
 import mapreduce.jobtracker.IJobTracker;
+import util.Connector;
 
 public class TaskTracker {
 	
@@ -29,6 +30,7 @@ public class TaskTracker {
 	private static final String JOB_TRACKER="jobtracker";
 	private int tid;
 	private MapperThreadPool mapperThreadPool = null;
+	
 	//TODO:similarly reducer threadpool has to be implementeed
 
 	public TaskTracker(int id) {
@@ -36,7 +38,7 @@ public class TaskTracker {
 		this.tid=id;
 		connectToJobTracker();
 		mapperThreadPool = new MapperThreadPool();
-		
+				
 	}
 	
 	static{

@@ -27,6 +27,7 @@ import mapreduce.MapReduce.BlockLocations;
 import mapreduce.MapReduce.DataNodeLocation;
 import mapreduce.MapReduce.MapTaskInfo;
 import mapreduce.MapReduce.MapTaskStatus;
+import util.Connector;
 
 public class MapperThreadPool {
 	private static final String SEARCH_FILE = "./config/searchword.ini";
@@ -74,21 +75,9 @@ public class MapperThreadPool {
 		
 		
 		//To Connect to Name Node
-		connectNameNode();
 	}
 	
-	private static void connectNameNode() {
-		if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new RMISecurityManager());
-		}
-		try {
-			Registry registry = LocateRegistry.getRegistry(namenodeIp);
-			namenode = (INameNode) registry.lookup("NameNode");
-		} catch ( RemoteException | NotBoundException e) {
-			System.out.println("ERROR: Error in PUT request...Returning......");
-			e.printStackTrace();
-		}
-	}
+	
 
 	public MapperThreadPool() {
 		System.out.println("INFO: Mapper Thread Constructor Started");
@@ -116,9 +105,11 @@ class MapWorker implements Runnable {
 	private static final String NEWLINE = "\n";
 	private static final int FAILURE = 0;
 	private MapTaskInfo mapTaskInfo;
+	private Connector connector;
 
 	public MapWorker(MapTaskInfo mapTaskInfo) {
 		this.mapTaskInfo = mapTaskInfo;
+		connector = Connector.getConnector();
 	}
 
 	private IDataNode connectDatanode(DataNodeLocation datanodeAddress) {
@@ -175,6 +166,7 @@ class MapWorker implements Runnable {
 	public void dumpMapFileToHDFS(){
 		String fileName = "job_" + mapTaskInfo.getJobId() + "_map_" + mapTaskInfo.getTaskId();
 		System.out.println("INFO: Dumping file: "+fileName+"");
+		connector.put(fileName);
 	}
 
 	public void executeMapTask() {

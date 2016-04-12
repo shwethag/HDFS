@@ -75,7 +75,7 @@ public class Connector {
 		return connector;
 	}
 	
-	private void connectNameNode() {
+	public void connectNameNode() {
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new RMISecurityManager());
 		}
@@ -104,6 +104,8 @@ public class Connector {
 		}
 
 	}
+	
+	
 	
 	
 	private byte[] constructOpen(String fileName, boolean isRead) {
