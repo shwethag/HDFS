@@ -232,6 +232,8 @@ class MapWorker implements Runnable {
 			}
 			MapTaskStatus.Builder mapBuild = MapTaskStatus.newBuilder(mapStatus);
 			mapBuild.setTaskCompleted(true);
+			String fileName = "job_" + mapTaskInfo.getJobId() + "_map_" + mapTaskInfo.getTaskId();
+			mapBuild.setMapOutputFile(fileName);
 			System.out
 					.println("INFO: Moving Completed Task from ActiveThreadList to completedThreadList ");
 			MapperThreadPool.activeThreadTask.remove(requiredIndex);
