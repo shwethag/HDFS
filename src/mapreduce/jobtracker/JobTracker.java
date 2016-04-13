@@ -56,8 +56,9 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	private Connector connector;
 	private Queue<Job> waitingJobQueue;
 	private Map<Integer, Job> jobInfoMap; // jobid,job
-	private Map<Integer, List<Integer>> jobMapTasklistMap; // JOBID, Task id list
-	private Map<Integer, List<Integer>> jobReduceTasklistMap; 
+	private Map<Integer, List<Integer>> jobMapTasklistMap; // JOBID, Task id
+															// list
+	private Map<Integer, List<Integer>> jobReduceTasklistMap;
 	private Queue<MapTaskInfo> waitingMapTasks;
 	private Queue<ReducerTaskInfo> waitingReduceTasks;
 	private Map<Integer, JobStatusResponse.Builder> activeMapperJobMap; // JOBID,
@@ -125,11 +126,9 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	@Override
 	public byte[] jobSubmit(byte[] jobSubmitRequest) throws RemoteException {
 		System.out.println("INFO: Submit job request received");
-		MapReduce.JobSubmitResponse.Builder jobResponseBuilder = MapReduce.JobSubmitResponse
-				.newBuilder();
+		MapReduce.JobSubmitResponse.Builder jobResponseBuilder = MapReduce.JobSubmitResponse.newBuilder();
 		try {
-			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest
-					.parseFrom(jobSubmitRequest);
+			MapReduce.JobSubmitRequest jobSubmit = MapReduce.JobSubmitRequest.parseFrom(jobSubmitRequest);
 
 			String mapname = jobSubmit.getMapName();
 			String reducename = jobSubmit.getReducerName();
@@ -173,8 +172,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private mapreduce.MapReduce.BlockLocations copyBlockLocations(BlockLocations blkLocation) {
 		System.out.println("INFO: Copying block locations..");
-		mapreduce.MapReduce.BlockLocations.Builder mpBlkLocation = mapreduce.MapReduce.BlockLocations
-				.newBuilder();
+		mapreduce.MapReduce.BlockLocations.Builder mpBlkLocation = mapreduce.MapReduce.BlockLocations.newBuilder();
 		mpBlkLocation.setBlockNumber(blkLocation.getBlockNumber());
 		for (DataNodeLocation dloc : blkLocation.getLocationsList()) {
 			System.out.println("DN: IP=" + dloc.getIp());
@@ -214,8 +212,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 		try {
 			System.out.println("INFO: Getting Block locations..");
-			byte[] blkReqResponse = connector.namenode.getBlockLocations(blkLocReqBuilder.build()
-					.toByteArray());
+			byte[] blkReqResponse = connector.namenode.getBlockLocations(blkLocReqBuilder.build().toByteArray());
 			BlockLocationResponse blkResp = BlockLocationResponse.parseFrom(blkReqResponse);
 			int taskId = 1;
 			System.out.println("INFO: Processing block location response..");
@@ -261,6 +258,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			if (completedJobMap.containsKey(jobId)) {
 				jobStatusBuilder = completedJobMap.get(jobId);
 				jobStatusBuilder.setStatus(SUCCESS);
+				jobStatusBuilder.setJobDone(true);
 			} else if (activeMapperJobMap.containsKey(jobId)) {
 				jobStatusBuilder = activeMapperJobMap.get(jobId);
 				jobStatusBuilder.setStatus(SUCCESS);
@@ -277,19 +275,16 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			e.printStackTrace();
 
 		}
-		System.out.println("DEBUG: " + jobStatusBuilder.getStatus() + " "
-				+ jobStatusBuilder.getNumMapTasksStarted());
+		System.out.println("DEBUG: " + jobStatusBuilder.getStatus() + " " + jobStatusBuilder.getNumMapTasksStarted());
 		return jobStatusBuilder.build().toByteArray();
 	}
 
-	private HeartBeatResponse.Builder processWaitingMapTask(
-			HeartBeatResponse.Builder heartBeatResponse,
+	private HeartBeatResponse.Builder processWaitingMapTask(HeartBeatResponse.Builder heartBeatResponse,
 			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest, int freeMapSlots)
-			throws InvalidProtocolBufferException {
+					throws InvalidProtocolBufferException {
 		System.out.println("INFO: Free Map Slots available is " + freeMapSlots);
 		if (freeMapSlots != 0 && !waitingMapTasks.isEmpty()) {
-			System.out
-					.println("INFO: Assigning map Task to " + heartBeatRequest.getTaskTrackerId());
+			System.out.println("INFO: Assigning map Task to " + heartBeatRequest.getTaskTrackerId());
 			int count = Math.min(freeMapSlots, waitingMapTasks.size());
 			heartBeatResponse.setStatus(SUCCESS);
 			for (int i = 0; i < count; i++) {
@@ -300,28 +295,25 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				// add it to active map
 				int jobId = maptask.getJobId();
 				// need to modify the values
-				System.out
-						.println("INFO: Modifying the jobStatusResponse node for jobId: " + jobId);
+				System.out.println("INFO: Modifying the jobStatusResponse node for jobId: " + jobId);
 				JobStatusResponse.Builder jobStatusResponse = activeMapperJobMap.get(jobId);
-				jobStatusResponse
-						.setNumMapTasksStarted(jobStatusResponse.getNumMapTasksStarted() + 1);
+				jobStatusResponse.setNumMapTasksStarted(jobStatusResponse.getNumMapTasksStarted() + 1);
 				activeMapperJobMap.put(jobId, jobStatusResponse);
 			}
 		} else {
-			System.out.println("INFO: No map Task was assigned to "
-					+ heartBeatRequest.getTaskTrackerId());
+			System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
 		}
 		return heartBeatResponse;
 	}
 
-	private HeartBeatResponse.Builder processWaitingReduceTask(
-			HeartBeatResponse.Builder heartBeatResponse,
+	private HeartBeatResponse.Builder processWaitingReduceTask(HeartBeatResponse.Builder heartBeatResponse,
 			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest, int freeReduceSlots)
-			throws InvalidProtocolBufferException {
+					throws InvalidProtocolBufferException {
 		System.out.println("INFO: Processing waiting reduce task");
+		System.out.println(
+				"DEBUG: Free reduce Task:" + freeReduceSlots + "  reduce queue Size:" + waitingReduceTasks.size());
 		if (freeReduceSlots != 0 && !waitingReduceTasks.isEmpty()) {
-			System.out
-					.println("INFO: Assigning reduce Task to " + heartBeatRequest.getTaskTrackerId());
+			System.out.println("INFO: Assigning reduce Task to " + heartBeatRequest.getTaskTrackerId());
 			int count = Math.min(freeReduceSlots, waitingReduceTasks.size());
 			heartBeatResponse.setStatus(SUCCESS);
 			for (int i = 0; i < count; i++) {
@@ -332,19 +324,16 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				// add it to active map
 				int jobId = reducetask.getJobId();
 				// need to modify the values
-				System.out
-						.println("INFO: Modifying the jobStatusResponse node for jobId: " + jobId);
+				System.out.println("INFO: Modifying the jobStatusResponse node for jobId: " + jobId);
 				JobStatusResponse.Builder jobStatusResponse = activeReducerJobMap.get(jobId);
-				jobStatusResponse
-						.setNumReduceTasksStarted(jobStatusResponse.getNumReduceTasksStarted() + 1);
+				jobStatusResponse.setNumReduceTasksStarted(jobStatusResponse.getNumReduceTasksStarted() + 1);
 				activeMapperJobMap.put(jobId, jobStatusResponse);
 			}
 		} else {
-			System.out.println("INFO: No map Task was assigned to "
-					+ heartBeatRequest.getTaskTrackerId());
+			System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
 		}
 		return heartBeatResponse;
-		
+
 	}
 
 	private void createReduceTasks(int jobId) {
@@ -352,6 +341,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		int totalOpFile = jobOpFileList.get(jobId).size();
 		int reduceTaskCnt = jobInfoMap.get(jobId).getReducersCnt();
 		int grpCnt = (int) Math.ceil((float) totalOpFile / reduceTaskCnt);
+		System.out.println("DEBUG: ReduceTaskCnt="+reduceTaskCnt+" TotalOpFile="+totalOpFile+" grpCnt="+grpCnt);
 		int cnt = 0;
 		List<String> opFileList = jobOpFileList.get(jobId);
 		List<String> mapOutputFiles = new ArrayList<>();
@@ -365,18 +355,17 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				reduceTaskBuilder.setTaskId(taskid);
 				reduceTaskBuilder.setReducerName(jobInfoMap.get(jobId).getReduceName());
 				reduceTaskBuilder.addAllMapOutputFiles(mapOutputFiles);
-				reduceTaskBuilder.setOutputFile(jobInfoMap.get(jobId).getOutputFileName() + "_"
-						+ jobId + "_" + taskid);
+				reduceTaskBuilder.setOutputFile(jobInfoMap.get(jobId).getOutputFileName() + "_" + jobId + "_" + taskid);
 				System.out.println("Adding reduce task to waiting queue " + jobId + " " + taskid);
 				waitingReduceTasks.add(reduceTaskBuilder.build());
 				taskIdList.add(taskid);
 				taskid++;
 				mapOutputFiles = new ArrayList<>();
 				cnt = 0;
-			} else {
+			} 
 				cnt++;
 				mapOutputFiles.add(opFileList.get(i));
-			}
+			
 		}
 
 		if (mapOutputFiles.size() > 0) {
@@ -386,13 +375,13 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			reduceTaskBuilder.setTaskId(taskid);
 			reduceTaskBuilder.setReducerName(jobInfoMap.get(jobId).getReduceName());
 			reduceTaskBuilder.addAllMapOutputFiles(mapOutputFiles);
-			reduceTaskBuilder.setOutputFile(jobInfoMap.get(jobId).getOutputFileName() + "_" + jobId
-					+ "_" + taskid);
+			reduceTaskBuilder.setOutputFile(jobInfoMap.get(jobId).getOutputFileName() + "_" + jobId + "_" + taskid);
 			taskIdList.add(taskid);
 			System.out.println("Adding last reduce task to waiting queue " + jobId + " " + taskid);
 			waitingReduceTasks.add(reduceTaskBuilder.build());
 		}
-		
+		System.out.println("DEBUG: Total Tasks for job ID "+jobId + " is:"+taskIdList.size());
+		System.out.println("DEBUG: waitingReduce Size:"+waitingReduceTasks.size());
 		jobReduceTasklistMap.put(jobId, taskIdList);
 
 	}
@@ -402,8 +391,8 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		for (MapTaskStatus mpStatus : mapStatusList) {
 			if (mpStatus.getTaskCompleted()) {
 				int jobId = mpStatus.getJobId();
-				System.out.println("INFO: Job with id " + jobId + " and Map task id "
-						+ mpStatus.getTaskId() + " is completed");
+				System.out.println(
+						"INFO: Job with id " + jobId + " and Map task id " + mpStatus.getTaskId() + " is completed");
 
 				List<String> opFileList = jobOpFileList.get(jobId);
 				opFileList.add(mpStatus.getMapOutputFile());
@@ -419,24 +408,23 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 					createReduceTasks(jobId);
 
 				}
-					jobMapTasklistMap.put(jobId, taskList);
-				
+				jobMapTasklistMap.put(jobId, taskList);
 
 			}
 		}
 	}
-	
-	private void processReduceTaskStatus(List<ReduceTaskStatus> reduceStatusList){
+
+	private void processReduceTaskStatus(List<ReduceTaskStatus> reduceStatusList) {
 		System.out.println("INFO: Processing reduce task status from HB");
 		for (ReduceTaskStatus reduceTaskStatus : reduceStatusList) {
-			if(reduceTaskStatus.getTaskCompleted()){
+			if (reduceTaskStatus.getTaskCompleted()) {
 				int jobId = reduceTaskStatus.getJobId();
-				System.out.println("INFO: Job with id " + jobId + " and reduce task id "
-						+ reduceTaskStatus.getTaskId() + " is completed");
+				System.out.println("INFO: Job with id " + jobId + " and reduce task id " + reduceTaskStatus.getTaskId()
+						+ " is completed");
 
-				//List<String> opFileList = jobOpFileList.get(jobId);
-				//opFileList.add(mpStatus.getMapOutputFile());
-				//jobOpFileList.put(jobId, opFileList);
+				// List<String> opFileList = jobOpFileList.get(jobId);
+				// opFileList.add(mpStatus.getMapOutputFile());
+				// jobOpFileList.put(jobId, opFileList);
 				List<Integer> taskList = jobReduceTasklistMap.get(jobId);
 				taskList.remove((Integer) reduceTaskStatus.getTaskId());
 				if (taskList.isEmpty()) {
@@ -445,11 +433,10 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 					activeReducerJobMap.remove(jobId);
 					System.out.println("INFO: Moving job to completed Job map " + jobId);
 					completedJobMap.put(jobId, jobStatusBuilder);
-					
 
-				} 
-					jobReduceTasklistMap.put(jobId, taskList);
-				
+				}
+				jobReduceTasklistMap.put(jobId, taskList);
+
 			}
 		}
 	}
@@ -461,20 +448,19 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		try {
 			mapreduce.MapReduce.HeartBeatRequest heartBeatRequest = mapreduce.MapReduce.HeartBeatRequest
 					.parseFrom(heartbeatRequestByte);
-			// System.out.println("INFO: Recieved heartbeat request from: "
-			// + heartBeatRequest.getTaskTrackerId());
-			/******* Process 1: To handle map status response ********/
+					// System.out.println("INFO: Recieved heartbeat request
+					// from: "
+					// + heartBeatRequest.getTaskTrackerId());
+					/******* Process 1: To handle map status response ********/
 			processMapTaskStatus(heartBeatRequest.getMapStatusList());
 			/******* Process 2: To handle reduce status response ********/
 			processReduceTaskStatus(heartBeatRequest.getReduceStatusList());
 			/******* Process 3: To assign new map tasks ********/
 			int freeMapSlots = heartBeatRequest.getNumMapSlotsFree();
-			heartBeatResponse = processWaitingMapTask(heartBeatResponse, heartBeatRequest,
-					freeMapSlots);
+			heartBeatResponse = processWaitingMapTask(heartBeatResponse, heartBeatRequest, freeMapSlots);
 			/******* Process 4: To assign new reduce tasks ********/
 			int freeReduceSlots = heartBeatRequest.getNumReduceSlotsFree();
-			heartBeatResponse = processWaitingReduceTask(heartBeatResponse, heartBeatRequest,
-					freeReduceSlots);
+			heartBeatResponse = processWaitingReduceTask(heartBeatResponse, heartBeatRequest, freeReduceSlots);
 		} catch (InvalidProtocolBufferException e) {
 			e.printStackTrace();
 			heartBeatResponse.setStatus(FAILURE);
@@ -499,7 +485,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			}
 			registry.bind("JobTracker", jobTracker);
 			System.out.println("Service Bound..");
-			//jobTracker.connector.connectNameNode();
+			// jobTracker.connector.connectNameNode();
 			new Thread(new Runnable() {
 
 				@Override

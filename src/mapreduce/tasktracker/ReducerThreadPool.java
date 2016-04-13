@@ -28,6 +28,7 @@ public class ReducerThreadPool {
 	private static final String CONFIG = "./config/config.ini";
 	private static final String BLOCK = "blocksize";
 	private static final String NAMENODE = "namenode";
+	public static final String DOWNLOADED_FILE_PATH="./remoteData";
 	private static int blockSize;
 	
 	
@@ -85,6 +86,7 @@ public class ReducerThreadPool {
 }
 
 class ReducerWorker implements Runnable {
+	private static final String DELI = "/";
 	private static final String NEWLINE = "\n";
 	private static final int FAILURE = 0;
 	private ReducerTaskInfo reducerTaskInfo;
@@ -112,40 +114,7 @@ class ReducerWorker implements Runnable {
 
 	}
 
-	public void handleReducerFunction(ByteString blockString) {
-		// to Create a local File
-		System.out.println("INFO: Reducer task is initiated");
-		String fileName = reducerTaskInfo.getOutputFile();
-		System.out.println("INFO: reducer results will be dumped in " + fileName);
-		PrintWriter pr = null;
-		try {
-			pr = new PrintWriter(new File(fileName));
-			System.out.println("INFO: to bind class dynamically: "+reducerTaskInfo.getReducerName());
-			Class cls = Class.forName(reducerTaskInfo.getReducerName());
-			IReducer reducer = (IReducer) cls.newInstance();
 
-			String[] lines = blockString.toStringUtf8().split(NEWLINE);
-			for (String line : lines) {
-				String res = reducer.reduce(line);
-				if (res != null)
-					pr.println(res);
-			}
-		} catch (FileNotFoundException | ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		} finally {
-			if (pr != null)
-				pr.close();
-		}
-	}
-	
 	public void dumpReducerFileToHDFS(){
 		String fileName = reducerTaskInfo.getOutputFile();
 		System.out.println("INFO: Dumping file: "+fileName+"");
@@ -161,11 +130,40 @@ class ReducerWorker implements Runnable {
 			//	for each line call reducer.reduce()
 			// if not null, Then put it to reduce_output file
 		
-		for (String mapFile : reducerTaskInfo.getMapOutputFilesList()) {
-			System.out.println("trying to fetch "+mapFile + " from HDFS");
-			connector.get(mapFile);
-			System.out.println(mapFile + " downloaded");
+		Scanner sc =  null;
+		String outputFileName=reducerTaskInfo.getOutputFile()+"_"+reducerTaskInfo.getTaskId();
+		PrintWriter pr = null;
+		try {
+			pr= new  PrintWriter(new File(outputFileName));
+			Class cls = Class.forName(reducerTaskInfo.getReducerName());
+			IReducer reducer = (IReducer) cls.newInstance();
+		
+		
+			for (String mapFile : reducerTaskInfo.getMapOutputFilesList()) {
+				System.out.println("trying to fetch "+mapFile + " from HDFS");
+				connector.get(mapFile);
+				System.out.println(mapFile + " downloaded");
+				sc = new Scanner(new File(ReducerThreadPool.DOWNLOADED_FILE_PATH+DELI+mapFile));
+				sc.nextLine();//Ignoring Header
+				while(sc.hasNext()){
+					String line=reducer.reduce(sc.nextLine());
+					if(line!=null)
+						pr.println(line);
+				}
+				if(sc!=null)
+					sc.close();
+			}
+		
+		} catch (FileNotFoundException | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+			e.printStackTrace();
+		}finally{
+			if(pr!=null){
+				pr.close();
+			}
 		}
+		System.out.println("RESULT: "+outputFileName+" Created SuccessFully");
+		connector.put(outputFileName);
+		System.out.println("SUCCESS: "+outputFileName+ " Successfully uploaded to HDFS");
 		
 	}
 
