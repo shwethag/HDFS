@@ -7,7 +7,9 @@ import hdfs.Hdfs.BlockLocations;
 import hdfs.Hdfs.DataNodeLocation;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -118,8 +120,10 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			sc = new Scanner(new File(JOBID_DUMP));
 			if(sc.hasNext()){
 				jobIdCnt=Integer.parseInt(sc.nextLine());
+				
 			}
 			
+
 		} catch (IOException e) {
 			System.out.println("Error loading init files");
 			e.printStackTrace();
@@ -127,6 +131,22 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 			if (sc != null)
 				sc.close();
 		}
+	}
+	
+	
+	public void dumpJobIdToFile(){
+		PrintWriter pr = null;
+		
+		try {
+			pr = new PrintWriter(new File(JOBID_DUMP));
+			pr.println(jobIdCnt);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}finally{
+			if(pr!=null)
+				pr.close();
+		}
+		
 	}
 
 	@Override
@@ -164,7 +184,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				jobResponseBuilder.setJobId(jobIdCnt);
 				jobInfoMap.put(jobIdCnt, job);
 				jobOpFileList.put(jobId, new ArrayList<String>());
-
+				dumpJobIdToFile();
 				jobResponseBuilder.setStatus(SUCCESS);
 			}
 
