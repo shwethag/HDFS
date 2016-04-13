@@ -131,8 +131,9 @@ class ReducerWorker implements Runnable {
 			// if not null, Then put it to reduce_output file
 		
 		Scanner sc =  null;
-		String outputFileName=reducerTaskInfo.getOutputFile()+"_"+reducerTaskInfo.getTaskId();
+		String outputFileName=reducerTaskInfo.getOutputFile();
 		PrintWriter pr = null;
+		boolean isempty=true;
 		try {
 			pr= new  PrintWriter(new File(outputFileName));
 			Class cls = Class.forName(reducerTaskInfo.getReducerName());
@@ -147,11 +148,17 @@ class ReducerWorker implements Runnable {
 				sc.nextLine();//Ignoring Header
 				while(sc.hasNext()){
 					String line=reducer.reduce(sc.nextLine());
-					if(line!=null)
+					if(line!=null){
 						pr.println(line);
+						isempty=false;
+					}
+						
 				}
 				if(sc!=null)
 					sc.close();
+			}
+			if(isempty){
+				pr.println("*************NO Search Term Found in This Block*****************");
 			}
 		
 		} catch (FileNotFoundException | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
