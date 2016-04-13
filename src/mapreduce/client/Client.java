@@ -132,10 +132,11 @@ public class Client {
 				int mapTaskStarted = jobStatusResponse.getNumMapTasksStarted();
 				int redTaskStarted = jobStatusResponse.getNumReduceTasksStarted();
 				System.out.println("***Map Task Status****");
-				System.out.println("#MapTasks " + mapTasksCnt + " #MapTasksStarted");
+				System.out.println("#MapTasks " + mapTasksCnt + " #MapTasksStarted " + mapTaskStarted);
 				printStatus(mapTaskStarted/(float)mapTasksCnt*100);
-				/*System.out.println("***Reduce Task Status****");
-				printStatus(redTaskStarted/(float)redTaskCnt);*/
+				System.out.println("***Reduce Task Status****");
+				System.out.println("#ReduceTasks " + redTaskCnt + " #ReduceTaskStarted " + redTaskStarted);
+				printStatus(redTaskStarted/(float)redTaskCnt);
 				if(jobStatusResponse.getJobDone()){
 					System.out.println("*****JOB is Completed *********" + jobId);
 					break;
