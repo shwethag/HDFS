@@ -184,8 +184,8 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 		blkReportReq.setId(dataNode_ID);
 		synchronized (lock) {
 			for (Integer blkId : blockIdList) {
-				System.out.println("ind loop");
-				System.out.println("gh:" + blkId +' ' + blkId + ':' );
+				//System.out.println("ind loop");
+				//System.out.println("gh:" + blkId +' ' + blkId + ':' );
 				blkReportReq.addBlockNumbers(blkId);
 			}
 		}
