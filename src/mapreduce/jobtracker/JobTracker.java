@@ -41,6 +41,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 
 	private static final String TASK_TRACKER_IPS = "./config/tasktracker.ini";
 	private static final String MAPPERS_REDUCERS = "./config/mappers_reducers.ini";
+	private static final String JOBID_DUMP = "./data_dump/jobId.dat";
 
 	private static final long serialVersionUID = 1L;
 	private static final int SUCCESS = 1;
@@ -113,7 +114,12 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				tt_id_ip.put(Integer.parseInt(id_ip[0]), id_ip[1]);
 			}
 			sc.close();
-
+			
+			sc = new Scanner(new File(JOBID_DUMP));
+			if(sc.hasNext()){
+				jobIdCnt=Integer.parseInt(sc.nextLine());
+			}
+			
 		} catch (IOException e) {
 			System.out.println("Error loading init files");
 			e.printStackTrace();

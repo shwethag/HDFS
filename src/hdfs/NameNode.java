@@ -30,6 +30,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 	private static final String EQUALS = "=";
 	private static final String DATANODE_INI = "./config/datanode.ini";
 	private static final String FILEHANDLE_MAP = "./data_dump/filehandleMap.dat";
+	private static final String JOBID_DUMP = "./data_dump/jobId.dat";
 	private static final int FAILURE = 0;
 	private static final int SUCCESS = 1;
 	private static final long serialVersionUID = 1L;
@@ -64,6 +65,8 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 				idLocMap.put(Integer.parseInt(line[0]), line[1]);
 				dataNodeCount++;
 			}
+			
+				
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}finally{
@@ -196,8 +199,10 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 				}
 			}else{
 				Integer fileHandle = fileHandlerMap.get(openFileRequest.getFileName());
-				//File handle has been  created but no client is using
-				if(!activeHandleMode.containsKey(fileHandle)){
+				if(openFileRequest.getForRead()==false){
+					openFileResponseBuilder.setStatus(FAILURE);
+					System.out.println("ERROR: File already exists in the system");
+				}else if(!activeHandleMode.containsKey(fileHandle)){
 					activeHandleMode.put(fileHandle,openFileRequest.getForRead());
 					openFileResponseBuilder.setStatus(SUCCESS);
 					openFileResponseBuilder.setHandle(fileHandle);
