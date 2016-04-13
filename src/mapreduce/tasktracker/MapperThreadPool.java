@@ -142,6 +142,7 @@ class MapWorker implements Runnable {
 			IMapper mapper = (IMapper) cls.newInstance();
 
 			String[] lines = blockString.toStringUtf8().split(NEWLINE);
+			pr.println(fileName);
 			for (String line : lines) {
 				String res = mapper.map(line,MapperThreadPool.searchterm);
 				if (res != null)
