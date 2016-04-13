@@ -18,6 +18,7 @@ import mapreduce.MapReduce;
 import mapreduce.MapReduce.HeartBeatResponse;
 import mapreduce.MapReduce.MapTaskInfo;
 import mapreduce.MapReduce.MapTaskStatus;
+import mapreduce.MapReduce.ReduceTaskStatus;
 import mapreduce.MapReduce.ReducerTaskInfo;
 import mapreduce.jobtracker.IJobTracker;
 import util.Connector;
@@ -30,6 +31,7 @@ public class TaskTracker {
 	private static final String JOB_TRACKER="jobtracker";
 	private int tid;
 	private MapperThreadPool mapperThreadPool = null;
+	private ReducerThreadPool reducerThreadPool = null;
 	
 	//TODO:similarly reducer threadpool has to be implementeed
 
@@ -38,6 +40,8 @@ public class TaskTracker {
 		this.tid=id;
 		connectToJobTracker();
 		mapperThreadPool = new MapperThreadPool();
+		reducerThreadPool = new ReducerThreadPool();
+		
 				
 	}
 	
@@ -81,6 +85,7 @@ public class TaskTracker {
 		MapReduce.HeartBeatResponse heartBeatResponse = null;
 		heartBeatBuilder.setTaskTrackerId(tid);
 		heartBeatBuilder.setNumMapSlotsFree(MapperThreadPool.availableCount);
+		heartBeatBuilder.setNumReduceSlotsFree(ReducerThreadPool.availableCount);
 		//System.out.println("INFO: Attaching tib and freeslots to heartbeat successfull");
 		//TODO: Need to add info of reducer Thread pool
 		for ( MapTaskStatus mapTaskStatus : MapperThreadPool.activeThreadTask) {
@@ -90,8 +95,18 @@ public class TaskTracker {
 		for (MapTaskStatus mapTaskStatus : MapperThreadPool.completedThreadTask) {
 			heartBeatBuilder.addMapStatus(mapTaskStatus);
 		}
-		
 		MapperThreadPool.flushCompletedList();
+		
+		for ( ReduceTaskStatus redTaskStatus : ReducerThreadPool.activeThreadTask) {
+			heartBeatBuilder.addReduceStatus(redTaskStatus);
+		}
+		
+		for (ReduceTaskStatus redTaskStatus : ReducerThreadPool.completedThreadTask) {
+			heartBeatBuilder.addReduceStatus(redTaskStatus);
+		}
+		
+		ReducerThreadPool.flushCompletedList();
+		
 		try {
 		
 		//System.out.println("INFO: Appending Task status to heartbeat was successfull");
@@ -113,10 +128,10 @@ public class TaskTracker {
 			mapperThreadPool.addNewMapTask(mapTaskInfo);
 		}
 		
-		/*for (ReducerTaskInfo reduceTaskInfo : heartBeatResponse.getReduceTasksList()) {
-			mapperThreadPool.addNewReduceTask(reduceTaskInfo);
+		for (ReducerTaskInfo reduceTaskInfo : heartBeatResponse.getReduceTasksList()) {
+			reducerThreadPool.addNewReducerTask(reduceTaskInfo);
 		}
-		*/
+		
 		
 		
 		//System.out.println("INFO: Checking ReduceTasks");

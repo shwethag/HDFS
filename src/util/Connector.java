@@ -75,7 +75,7 @@ public class Connector {
 		return connector;
 	}
 	
-	public void connectNameNode() {
+	private void connectNameNode() {
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new RMISecurityManager());
 		}

@@ -212,6 +212,7 @@ class MapWorker implements Runnable {
 		}
 
 		// For each Line in call map() in Mapper.java
+		//TODO: verify its correct o not
 		handleMapFunction(s);
 		// Store the output in a file
 		// Once done upload the result file to HDFS and return the file
