@@ -89,7 +89,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 				String val[] = line.split(EQUALS);
 				int key=Integer.parseInt(val[0]);
 				fileHandleCounter = Math.max(fileHandleCounter, key );
-				System.out.println(line);
+				//System.out.println(line);
 				String values[] = val[1].split(COMMA);
 				List<Integer> blockNums = new ArrayList<>();
 				for(int i=0;i<values.length;i++){
@@ -136,15 +136,15 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 		try {
 			pr = new PrintWriter(new File(BLOCKMAPFILE));
 			for (Map.Entry<Integer, List<Integer> > entry : blockMap.entrySet()) {
-				System.out.print(entry.getKey().toString()+EQUALS);
+				//System.out.print(entry.getKey().toString()+EQUALS);
 				pr.print(entry.getKey().toString());
 				pr.print(EQUALS);
 				for (Integer blockNum : entry.getValue()) {
-					System.out.print(blockNum.toString()+COMMA);
+					//System.out.print(blockNum.toString()+COMMA);
 					pr.print(blockNum.toString());
 					pr.print(COMMA);
 				}
-				System.out.println();
+			//	System.out.println();
 				pr.println();
 			}
 		} catch (FileNotFoundException e) {
@@ -218,9 +218,9 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 				}
 				if(openFileResponseBuilder.getStatus()==SUCCESS){
 					//Read mode Hence need to add all block numbers
-					System.out.println("INFO: Adding BlockNumbers for Open call for file: "+openFileRequest.getFileName());
+				//	System.out.println("INFO: Adding BlockNumbers for Open call for file: "+openFileRequest.getFileName());
 					for (int blockNum: blockMap.get(fileHandle)) {
-						System.out.println("blk: " + blockNum);
+						//System.out.println("blk: " + blockNum);
 						openFileResponseBuilder.addBlockNums(blockNum);
 					}
 				}
@@ -336,7 +336,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 	}
 	
 	private Hdfs.BlockLocations getBlockLocation(int blkNum){
-		System.out.println("INFO: Get block location request received for block " + blkNum);
+		//System.out.println("INFO: Get block location request received for block " + blkNum);
 		Hdfs.BlockLocations.Builder blockLoc = Hdfs.BlockLocations.newBuilder();
 		if(!blockIdListMap.containsKey(blkNum)){
 			System.out.println("ERROR: Block number not present");
@@ -353,7 +353,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 	
 	@Override
 	public byte[] getBlockLocations(byte[] inp) throws RemoteException {
-		System.out.println("INFO: Get block locations request received");
+		//System.out.println("INFO: Get block locations request received");
 		Hdfs.BlockLocationResponse.Builder blockLocResBuilder = Hdfs.BlockLocationResponse.newBuilder();
 		
 		try {
@@ -361,7 +361,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 			for (int blkNum : blockLocationRequest.getBlockNumsList()) {
 				Hdfs.BlockLocations blockLocations = getBlockLocation(blkNum);
 				if(blockLocations == null){
-					System.out.println("Error: Unable to retrieve block location for "+ blkNum);
+				//	System.out.println("Error: Unable to retrieve block location for "+ blkNum);
 					blockLocResBuilder.setStatus(FAILURE);
 					return blockLocResBuilder.build().toByteArray();
 				}
@@ -379,7 +379,7 @@ public class NameNode extends UnicastRemoteObject implements INameNode{
 
 	@Override
 	public byte[] blockReport(byte[] inp) throws RemoteException {
-		System.out.println("INFO: block report received");
+	//	System.out.println("INFO: block report received");
 		Hdfs.BlockReportResponse.Builder blkreportres = Hdfs.BlockReportResponse.newBuilder();
 		
 		try {

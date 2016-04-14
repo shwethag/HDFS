@@ -152,7 +152,7 @@ public class Connector {
 		return assignBuilder.build().toByteArray();
 	}
 	
-	public void get(String fileName) {
+	public synchronized void get(String fileName) {
 		Hdfs.OpenFileResponse openResponse;
 		if (connector.namenode == null) {
 			System.out.println("ERROR: Name node is not connected ");
@@ -276,16 +276,17 @@ public class Connector {
 		return blockDataMap;
 	}
 
-	public void put(String fileName) {
+	public synchronized void put(String fileName) {
 		System.out.println("INFO: Received put request");
 		// open
 		Hdfs.OpenFileResponse openResponse;
 		
-		if ((openResponse=connector.open(fileName, false)) == null) {
+		if ((openResponse=open(fileName, false)) == null) {
 			System.out.println("ERROR: open request failed..");
 			return;
 		}
-		connector.fileHandleMap.put(fileName, openResponse.getHandle());
+		fileHandleMap.put(fileName, openResponse.getHandle());
+		System.out.println("DEBUG: Put request file " + fileName + " handle " + openResponse.getHandle() + "...") ;
 		FileInputStream fin = null;
 		try {
 			
@@ -307,6 +308,8 @@ public class Connector {
 				}
 			}
 			Hdfs.CloseFileRequest.Builder closeBuilder = Hdfs.CloseFileRequest.newBuilder();
+			System.out.println("DEBUG: close builder " + closeBuilder);
+			System.out.println("DEBUG: filehandle map get file " + fileName + " handle " + fileHandleMap.get(fileName));
 			closeBuilder.setHandle(fileHandleMap.get(fileName));
 			byte[] closeResponseArray = connector.namenode.closeFile(closeBuilder.build().toByteArray());
 			Hdfs.CloseFileResponse closeResponse = Hdfs.CloseFileResponse
