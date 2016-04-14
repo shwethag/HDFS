@@ -1,0 +1,19 @@
+java -Djava.security.policy=java.policy -cp ../lib/*:. mapreduce.jobtracker.JobTracker 
+
+
+java -Djava.security.policy=java.policy -cp ../lib/*:.  hdfs.DataNode 1
+java -Djava.security.policy=java.policy -cp ../lib/*:.  hdfs.DataNode 4
+
+java -Djava.security.policy=java.policy -cp ../lib/*:.  hdfs.Client 
+
+
+java -Djava.security.policy=java.policy -cp ../lib/*:.  mapreduce.tasktracker.TaskTracker 2 
+java -Djava.security.policy=java.policy -cp ../lib/*:.  mapreduce.tasktracker.TaskTracker 4
+
+
+rmic mapreduce.jobtracker.JobTracker
+rmic hdfs.DataNode
+rmic hdfs.NameNode
+
+
+java -Djava.security.policy=java.policy -cp ../lib/*:. mapreduce.client.Client mapreduce.MapReduce mapreduce.MapReduce inp.txt abhatt 4  

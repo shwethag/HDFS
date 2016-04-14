@@ -353,7 +353,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				System.out.println("INFO: Modifying the jobStatusResponse node for jobId: " + jobId);
 				JobStatusResponse.Builder jobStatusResponse = activeReducerJobMap.get(jobId);
 				jobStatusResponse.setNumReduceTasksStarted(jobStatusResponse.getNumReduceTasksStarted() + 1);
-				activeMapperJobMap.put(jobId, jobStatusResponse);
+				activeReducerJobMap.put(jobId, jobStatusResponse);
 			}
 		} else {
 			//System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
@@ -366,16 +366,18 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 		System.out.println("INFO: Creating reduce tasks for job " + jobId);
 		int totalOpFile = jobOpFileList.get(jobId).size();
 		int reduceTaskCnt = jobInfoMap.get(jobId).getReducersCnt();
-		int grpCnt = (int) Math.ceil((float) totalOpFile / reduceTaskCnt);
+		int grpCnt =  totalOpFile / reduceTaskCnt;
 		System.out.println("DEBUG: ReduceTaskCnt="+reduceTaskCnt+" TotalOpFile="+totalOpFile+" grpCnt="+grpCnt);
 		int cnt = 0;
 		List<String> opFileList = jobOpFileList.get(jobId);
 		List<String> mapOutputFiles = new ArrayList<>();
 		jobReduceTasklistMap.put(jobId, new ArrayList<Integer>());
 		int taskid = 1;
+		int curRedceCnt=0;
 		List<Integer> taskIdList = new ArrayList<>();
 		for (int i = 0; i < totalOpFile; i++) {
-			if (cnt == grpCnt) {
+			if (cnt == grpCnt && curRedceCnt<reduceTaskCnt-1) {
+				curRedceCnt++;
 				ReducerTaskInfo.Builder reduceTaskBuilder = ReducerTaskInfo.newBuilder();
 				reduceTaskBuilder.setJobId(jobId);
 				reduceTaskBuilder.setTaskId(taskid);
