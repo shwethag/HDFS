@@ -131,7 +131,7 @@ public class Client {
 				int redTaskCnt = jobStatusResponse.getTotalReduceTasks();
 				int mapTaskStarted = jobStatusResponse.getNumMapTasksStarted();
 				int redTaskStarted = jobStatusResponse.getNumReduceTasksStarted();
-				
+				Runtime.getRuntime().exec("clear");
 				System.out.println("***Map Task Status****");
 				System.out.print("#MapTasks " + mapTasksCnt + " #MapTasksStarted " + mapTaskStarted + "\t");
 				printStatus(mapTaskStarted/(float)mapTasksCnt*100);
@@ -148,6 +148,8 @@ public class Client {
 				}
 			} catch (RemoteException | InvalidProtocolBufferException e) {
 				System.out.println("ERROR: connection failure");
+				e.printStackTrace();
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
