@@ -39,7 +39,7 @@ public class MapperThreadPool {
 	private static INameNode namenode;
 	
 	public static String searchterm;
-	public static int maxThreadCount = 3;
+	public static int maxThreadCount = 5;
 	public static int availableCount = maxThreadCount;
 	public static Object lock = new Object();
 	public static List<MapTaskStatus> activeThreadTask = null;

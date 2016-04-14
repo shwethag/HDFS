@@ -72,10 +72,10 @@ public class Client {
 	
 	private void printStatus(float percent){
 		System.out.println("Percentage Completion.. " + percent);
-		percent=percent/10;
+		//percent=percent/10;
 		
-		for(int i=0;i<=11;i++){
-			if(i==0 || i==11){
+		for(int i=0;i<=101;i++){
+			if(i==0 || i==101){
 				System.out.print("||");
 			}else if(i<=percent){
 				System.out.print("=");
@@ -131,12 +131,17 @@ public class Client {
 				int redTaskCnt = jobStatusResponse.getTotalReduceTasks();
 				int mapTaskStarted = jobStatusResponse.getNumMapTasksStarted();
 				int redTaskStarted = jobStatusResponse.getNumReduceTasksStarted();
+				
 				System.out.println("***Map Task Status****");
-				System.out.println("#MapTasks " + mapTasksCnt + " #MapTasksStarted " + mapTaskStarted);
+				System.out.print("#MapTasks " + mapTasksCnt + " #MapTasksStarted " + mapTaskStarted + "\t");
 				printStatus(mapTaskStarted/(float)mapTasksCnt*100);
+				System.out.println();
+				
 				System.out.println("***Reduce Task Status****");
-				System.out.println("#ReduceTasks " + redTaskCnt + " #ReduceTaskStarted " + redTaskStarted);
-				printStatus(redTaskStarted/(float)redTaskCnt);
+				System.out.print("#ReduceTasks " + redTaskCnt + " #ReduceTaskStarted " + redTaskStarted+"\t");
+				printStatus(redTaskStarted/(float)redTaskCnt*100);
+				System.out.println();
+				
 				if(jobStatusResponse.getJobDone()){
 					System.out.println("*****JOB is Completed *********" + jobId);
 					break;

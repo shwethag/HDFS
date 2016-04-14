@@ -32,7 +32,7 @@ public class ReducerThreadPool {
 	private static int blockSize;
 	
 	
-	public static int maxThreadCount = 3;
+	public static int maxThreadCount = 5;
 	public static int availableCount = maxThreadCount;
 	public static Object lock = new Object();
 	public static List<ReduceTaskStatus> activeThreadTask = null;
@@ -87,8 +87,6 @@ public class ReducerThreadPool {
 
 class ReducerWorker implements Runnable {
 	private static final String DELI = "/";
-	private static final String NEWLINE = "\n";
-	private static final int FAILURE = 0;
 	private ReducerTaskInfo reducerTaskInfo;
 	private Connector connector;
 
@@ -96,24 +94,6 @@ class ReducerWorker implements Runnable {
 		this.reducerTaskInfo = reducerTaskInfo;
 		connector = Connector.getConnector();
 	}
-
-	private IDataNode connectDatanode(DataNodeLocation datanodeAddress) {
-		if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new RMISecurityManager());
-		}
-		try {
-			// TODO: Check for port usage
-			Registry registry = LocateRegistry.getRegistry(datanodeAddress.getIp());
-			IDataNode datanode = (IDataNode) registry.lookup("DataNode");
-			return datanode;
-		} catch (RemoteException | NotBoundException e) {
-			System.out.println("ERROR: Error in connect datanode request...Returning......");
-			e.printStackTrace();
-			return null;
-		}
-
-	}
-
 
 	public void dumpReducerFileToHDFS(){
 		String fileName = reducerTaskInfo.getOutputFile();

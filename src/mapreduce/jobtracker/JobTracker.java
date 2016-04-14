@@ -327,7 +327,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				activeMapperJobMap.put(jobId, jobStatusResponse);
 			}
 		} else {
-			System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
+			//System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
 		}
 		return heartBeatResponse;
 	}
@@ -356,7 +356,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 				activeMapperJobMap.put(jobId, jobStatusResponse);
 			}
 		} else {
-			System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
+			//System.out.println("INFO: No map Task was assigned to " + heartBeatRequest.getTaskTrackerId());
 		}
 		return heartBeatResponse;
 
@@ -413,7 +413,7 @@ public class JobTracker extends UnicastRemoteObject implements IJobTracker {
 	}
 
 	private void processMapTaskStatus(List<MapTaskStatus> mapStatusList) {
-		System.out.println("INFO: Processing map task status from HB");
+		//System.out.println("INFO: Processing map task status from HB");
 		for (MapTaskStatus mpStatus : mapStatusList) {
 			if (mpStatus.getTaskCompleted()) {
 				int jobId = mpStatus.getJobId();

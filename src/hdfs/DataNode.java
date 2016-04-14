@@ -138,7 +138,6 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 					fin = new FileInputStream(file);
 					ByteString  blockString =ByteString.readFrom(fin);
 					readBlkResponse.setStatus(SUCCESS);
-					System.out.println("While Get In DN: "+blockString.toStringUtf8());
 					readBlkResponse.addData(blockString);
 				}catch(IOException e){
 					System.out.println("ERROR: unable to read block");
@@ -179,7 +178,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 
 	
 	public void sendBlockReport(){
-		System.out.println("INFO: Sending block report with id"+ dataNode_ID);
+		//System.out.println("INFO: Sending block report with id"+ dataNode_ID);
 		Hdfs.BlockReportRequest.Builder blkReportReq = Hdfs.BlockReportRequest.newBuilder();
 		blkReportReq.setId(dataNode_ID);
 		synchronized (lock) {
@@ -190,7 +189,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			}
 		}
 		
-		System.out.println();
+		//System.out.println();
 		if (namenode == null) {
 			System.out.println("ERROR: Unable to send Block report Name node is not connected ");
 			return;
@@ -217,7 +216,7 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 			int blockNum = blocklocations.getBlockNumber();
 			File block = new File(DATA_FOLDER+DEL+blockNum+DAT);
 			writer = new FileOutputStream(block);
-			System.out.println("Data in DN:"+data.toStringUtf8());
+			//System.out.println("Data in DN:"+data.toStringUtf8());
 			data.writeTo(writer);
 			
 			if(!forwardWrite(blocklocations,writeRequest.getData(0))){
@@ -307,12 +306,12 @@ public class DataNode extends UnicastRemoteObject implements IDataNode {
 	public void sendHeartbeat(){
 		Hdfs.HeartBeatRequest.Builder heartbeat = Hdfs.HeartBeatRequest.newBuilder();
 		heartbeat.setId(dataNode_ID);
-		System.out.println("Sending Heart Beat :"+ dataNode_ID);
+		//System.out.println("Sending Heart Beat :"+ dataNode_ID);
 		try {
 			byte[] res=namenode.heartBeat(heartbeat.build().toByteArray());
 			Hdfs.HeartBeatResponse heartBeatResponse = Hdfs.HeartBeatResponse.parseFrom(res);
 			if(heartBeatResponse.getStatus()==SUCCESS){
-				System.out.println("Heartbeat Response Successfull");
+				//System.out.println("Heartbeat Response Successfull");
 			}else{
 				System.out.println("Hearbeat response Failed");
 			}
